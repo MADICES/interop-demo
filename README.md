@@ -1,2 +1,3 @@
-# interop-demo
+# Platform-agnostic interoperability demo
+
 A demonstration of the platform-agnostic interoperability principles and specifications in action
