@@ -10,17 +10,20 @@ import tempfile
 
 app = Flask(__name__)
 CORS(app)
-app.config['UPLOAD_FOLDER'] = 'openbis/temp_uploads/'  # Define where uploaded files will be stored
-app.config['RO_CRATE_FOLDER'] = 'openbis/ro_crate/'
+app.config['UPLOAD_FOLDER'] = 'temp_uploads/'  # Define where uploaded files will be stored
+app.config['RO_CRATE_FOLDER'] = 'ro_crate/'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit to 16MB
 
 OPENBIS_DATA = [
-    {"id": "20240424084127547-750", "type": "@as.dto.dataset.DataSet", "title": "Research in Ontology"},
-    {"id": "20240424084127547-751", "type": "@as.dto.dataset.Dataset", "title": "Data related to Ontology Research"},
-    {"id": "20240320011823235-1", "type": "@as.dto.experiment.Experiment", "title": "Experiment 1"},
-    {"id": "20240320011823235-2", "type": "@as.dto.experiment.Experiment", "title": "Experiment 2"},
-    {"id": "20240402011823235-1289", "type": "@Object", "title": "Object 1"},
-    {"id": "ACTMS", "type": "@https://schema.org/MolecularEntity", "title": "Actomyosin"}     
+    {"permId": "20240424084127547-750", "type": "@as.dto.dataset.DataSet", "title": "Research in Ontology", "metadata": {"info":"1D image"}, "ontology": "@https://openbis.ont.ethz.ch//DataSet"},
+    {"permId": "20240424084127547-751", "type": "@as.dto.dataset.Dataset", "title": "Data related to Ontology Research", "metadata": {"info":"2D image"}, "ontology": "@https://openbis.ont.ethz.ch//DataSet"},
+    {"permId": "20240320011823235-1", "type": "@as.dto.experiment.Experiment", "title": "Experiment 1", "metadata": {"info":"Experiment on algea"}, "ontology": "@https://openbis.ont.ethz.ch//Experiment"},
+    {"permId": "20240320011823235-2", "type": "@as.dto.experiment.Experiment", "title": "Experiment 2", "metadata": None, "ontology": "@https://openbis.ont.ethz.ch//Experiment"},
+    {"permId": "20240402011823235-1280", "type": "@as.dto.object.Object", "title": "Protein", "metadata": {"hasBioPolymerSequence":"AAACCTTTGTACAATG"}, "ontology": "@https://schema.org/Protein"},
+    {"permId": "20240402011823235-1289", "type": "@as.dto.dataset.Object", "title": "Molecul", "metadata": {"inChIKey":"ACTMS", 
+                                                                                                            "iupacName": "Actomyosin", 
+                                                                                                            "molecularFormula":"", 
+                                                                                                            "molecularWeight": ""}, "ontology": "@https://schema.org/MolecularEntity"}
 ]
 
 @app.route('/')
@@ -36,7 +39,9 @@ def filter_data():
     filter_type = request.args.get('type')
     if not filter_type:
         return "Type parameter is required for filtering.", 400
-    filtered_data = [item for item in OPENBIS_DATA if item['type'].lower() == filter_type.lower()]
+    if filter_type == "all":
+        return jsonify(OPENBIS_DATA)
+    filtered_data = [item for item in OPENBIS_DATA if item['ontology'].lower() == filter_type.lower()]
     return jsonify(filtered_data)
 
 def extract_and_read_rocrate(file_path):
@@ -64,7 +69,7 @@ def get_all_types():
     # Create the JSON content
     response_file_path = os.path.join(temp_dir, 'response.json')
     with open(response_file_path, 'w') as f:
-        json.dump([item['type'] for item in OPENBIS_DATA], f, indent=4)
+        json.dump([item['ontology'] for item in OPENBIS_DATA], f, indent=4)
     
     # Add the JSON file to the crate
     crate.add_file(response_file_path, './response.json', properties={"@type": "RESPONSE"})
