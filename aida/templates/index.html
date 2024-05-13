@@ -14,173 +14,40 @@
 
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <header class="container d-flex align-items-center mb-4">
+        <img src="static/logo-light.svg" alt="Logo" style="height: 50px; margin-right: 10px;">
+        <h1 class="mb-0">Workflow Manager</h1>
+    </header>
+
     <hr>
+
     <div class="container mt-5">
         <div class="row">
-            <div class="col-6">
-                <h1 class="mb-4">AiiDA Data Viewer</h1>
+            <div class="col-8">
+                <h1>RO-Crate Exporter</h1>
                 <div class="mb-3">
-                    <button onclick="fetchData()" class="btn btn-primary">Fetch Data</button>
+                    <h2>Upload files to include in your RO-Crate</h2>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <input type="file" name="file" class="form-control">
+                        <input type="text" name="type" placeholder="Enter type (e.g., Dataset, Image)"
+                            class="form-control my-2">
+                        <button type="button" onclick="uploadFile()" class="btn btn-primary">Upload</button>
+                    </form>
                 </div>
-                <div class="mb-3">
-                    <h2>Filter by Type</h2>
-                    <select id="typeSelect" class="form-select mb-3">
-                        <option value="">Select a type</option>
-                    </select>
-                    <button onclick="fetchFilteredData()" class="btn btn-success">Fetch Filtered Data</button>
+                <div>
+                    <h5>Uploaded Files</h5>
+                    <ul id="fileList" class="list-group"></ul>
                 </div>
-                <ul id="dataList" class="list-group mt-3"></ul>
             </div>
-            <div class="col-6">
-                <h1 class="mb-4">Connect to OpenBIS</h1>
-                <div class="mb-3">
-                    <button onclick="fetchOpenbisData()" class="btn btn-primary">Fetch OpenBIS types</button>
+            <div class="col-4">
+                <div class="container mt-5">
+                    <h4>Export RO-Crate and Download</h4>
+                    <button onclick="exportData()" type="button" class="btn btn-primary">Prepare RO-Crate</button>
+                    <a id="downloadLink" href="/download" style="display: none;">Download RO-Crate</a>
                 </div>
-                <div id="openbisTypes" class="mb-3"></div>
-                <div class="mb-3">
-                    <h2>Filter by OpenBIS Type</h2>
-                    <select id="openbisTypeSelect" class="form-select mb-3">
-                        <option value="">Select a type</option>
-                    </select>
-                    <button onclick="fetchFilteredOpenbisData()" class="btn btn-success">Fetch Filtered OpenBIS
-                        Data</button>
-                </div>
-                <ul id="openbisDataList" class="list-group mt-3"></ul>
             </div>
         </div>
 
-    </div>
-
-    <script>
-        function fetchData() {
-            fetch('/data')
-                .then(response => response.json())
-                .then(data => {
-                    updateList(data);
-                    populateTypes(data);
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        function populateTypes(data) {
-            const types = new Set(data.map(item => item.type));
-            const typeSelect = document.getElementById('typeSelect');
-            typeSelect.innerHTML = '<option value="">Select a type</option>'; // Reset
-            types.forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type;
-                typeSelect.appendChild(option);
-            });
-        }
-
-        function fetchFilteredData() {
-            var selectedType = document.getElementById('typeSelect').value;
-            if (selectedType) {
-                fetch(`/data/filter?type=${encodeURIComponent(selectedType)}`)
-                    .then(response => response.json())
-                    .then(data => updateList(data))
-                    .catch(error => console.error('Error:', error));
-            } else {
-                alert('Please select a type to filter by!');
-            }
-        }
-
-        function updateList(data) {
-            const list = document.getElementById('dataList');
-            list.innerHTML = ''; // Clear previous entries
-            data.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item';
-                li.textContent = `ID: ${item.id}, Type: ${item.type}, Title: ${item.title}`;
-                list.appendChild(li);
-            });
-        }
-
-        function fetchOpenbisData() {
-            fetch('http://localhost:5001/data/types', {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/zip',
-                }
-            })
-                .then(response => {
-                    if (response.ok) return response.blob();
-                    throw new Error('Network response was not ok.');
-                })
-                .then(blob => {
-                    // Use JSZip to read the blob as a zip file
-                    const jsZip = new JSZip();
-                    return jsZip.loadAsync(blob);
-                })
-                .then(zip => {
-                    // Assume 'response.json' is the name of the file inside the RO-Crate zip
-                    const filename = 'response.json';
-                    if (filename in zip.files) {
-                        return zip.files[filename].async("string"); // Get the file content as a string
-                    }
-                    throw new Error('File not found in zip');
-                })
-                .then(jsonString => {
-                    // Parse JSON string and log the data or do something with it
-                    const data = JSON.parse(jsonString);
-                    console.log(data);
-                    // Optionally update the UI here to display the data
-                    const openbisTypes = new Set(data);
-                    const openbisTypeSelect = document.getElementById('openbisTypeSelect');
-                    openbisTypeSelect.innerHTML = '<option value="">Select a type</option>'; // Reset
-                    openbisTypes.forEach(type => {
-                        console.log(type);
-                        const option = document.createElement('option');
-                        option.value = type;
-                        option.textContent = type;
-                        openbisTypeSelect.appendChild(option);
-                    });
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        function fetchFilteredOpenbisData() {
-            var selectedType = document.getElementById('openbisTypeSelect').value;
-            if (selectedType) {
-                fetch(`http://localhost:5001/data/filter?type=${encodeURIComponent(selectedType)}`)
-                    .then(response => response.json())
-                    .then(data => updateOpenbisList(data))
-                    .catch(error => console.error('Error:', error));
-            } else {
-                alert('Please select a type to filter by!');
-            }
-        }
-
-        function updateOpenbisList(data) {
-            const list = document.getElementById('openbisDataList');
-            list.innerHTML = ''; // Clear previous entries
-            data.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item';
-                li.textContent = `ID: ${item.id}, Type: ${item.type}`;
-                list.appendChild(li);
-            });
-        }
-    </script>
-
-    <hr>
-
-    <div class="container mt-5">
-        <h1>RO-Crate Exporter</h1>
-        <div class="mb-3">
-            <h2>Upload files to include in your RO-Crate</h2>
-            <form id="uploadForm" enctype="multipart/form-data">
-                <input type="file" name="file" class="form-control">
-                <input type="text" name="type" placeholder="Enter type (e.g., Dataset, Image)"
-                    class="form-control my-2">
-                <button type="button" onclick="uploadFile()" class="btn btn-primary">Upload</button>
-            </form>
-        </div>
-        <div>
-            <h5>Uploaded Files</h5>
-            <ul id="fileList" class="list-group"></ul>
-        </div>
     </div>
 
     <script>
@@ -217,14 +84,7 @@
             };
             xhr.send(formData);
         }
-    </script>
 
-    <div class="container mt-5">
-        <h4>Export RO-Crate and Download</h4>
-        <button onclick="exportData()" type="button" class="btn btn-primary">Prepare RO-Crate</button>
-        <a id="downloadLink" href="/download" style="display: none;">Download RO-Crate</a>
-    </div>
-    <script>
         function exportData() {
             fetch('/export')
                 .then(response => response.json())
@@ -234,15 +94,270 @@
                 .catch(error => console.error('Error:', error));
         }
     </script>
+
     <hr>
+
     <div class="container mt-5">
-        <h1 class="mb-4">Upload RO-Crate Zip File</h1>
-        <form id="uploadForm1" class="mb-4">
-            <input type="file" id="fileInput1" accept=".zip" class="form-control mb-2">
-            <button type="button" onclick="uploadRocrate()" class="btn btn-primary">Upload</button>
-        </form>
-        <h2>Results:</h2>
-        <pre id="result1" class="bg-light p-3 border"></pre>
+        <div id="loading" class="text-center my-3" style="display: none;">Loading...</div>
+        <div id="error" class="alert alert-danger mt-3" style="display: none;"></div>
+        <div class="row">
+            <div class="col-6">
+                <h1 class="mb-4">AiiDA Data Viewer</h1>
+                <div class="mb-3">
+                    <h2>Filter by Type</h2>
+                    <div class="mb-3 d-flex align-items-center">
+                        <button onclick="fetchFilteredData()" class="btn btn-success">Filter</button>
+                        <select id="typeSelect" class="form-select">
+                            <option value="">Select a type</option>
+                        </select>
+
+                    </div>
+                </div>
+                <ul id="dataList" class="list-group mt-3"></ul>
+            </div>
+
+            <div class="col-6">
+                <h1 class="mb-4">Connect to openBIS</h1>
+                <div class="mb-3">
+                    <button onclick="fetchOpenbisData()" class="btn btn-primary">Fetch openBIS types</button>
+                </div>
+                <div id="openbisSteps" class="mb-3"></div>
+
+                <div id="filterSection" class="mb-3 d-none align-items-center">
+                    <h2>Filter by OpenBIS Type</h2>
+                    <div class="mb-3">
+                        <select id="openbisTypeSelect" class="form-select me-2">
+                            <option value="">Select a type</option>
+                        </select>
+                        <button onclick="fetchFilteredOpenbisData()" class="btn btn-success">Fetch from OpenBIS</button>
+                    </div>
+                </div>
+                <ul id="openbisDataList" class="list-group mt-3"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+        });
+
+        function toggleLoading(isLoading) {
+            const loadingElement = document.getElementById('loading');
+            loadingElement.style.display = isLoading ? 'block' : 'none';
+        }
+
+        function handleError(message) {
+            const errorElement = document.getElementById('error');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            toggleLoading(false);
+        }
+
+        function hideError() {
+            const errorElement = document.getElementById('error');
+            errorElement.style.display = 'none';
+        }
+
+        function fetchData() {
+            toggleLoading(true);
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    updateList(data);
+                    populateTypes(data);
+                    toggleLoading(false);
+                })
+                .catch(error => handleError('Failed to fetch data.'));
+        }
+
+        function populateTypes(data) {
+            const types = new Set(data.map(item => item.type));
+            const typeSelect = document.getElementById('typeSelect');
+            typeSelect.innerHTML = '<option value="">All</option>';
+            types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                typeSelect.appendChild(option);
+            });
+        }
+
+        function fetchFilteredData() {
+            const selectedType = document.getElementById('typeSelect').value;
+            if (selectedType) {
+                toggleLoading(true);
+                fetch(`/data/filter?type=${encodeURIComponent(selectedType)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            updateList(data);
+                            hideError();
+                        } else {
+                            handleError('No data found for the selected type.');
+                        }
+                        toggleLoading(false);
+                    })
+                    .catch(error => handleError('Failed to fetch filtered data.'));
+            } else {
+                fetchData();
+            }
+        }
+
+        function updateList(data) {
+            const list = document.getElementById('dataList');
+            list.innerHTML = '';
+            data.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.innerHTML = `<strong>ID:</strong> ${item.id} <strong>Type:</strong> ${item.type} <strong>Title:</strong> ${item.title}`;
+                list.appendChild(li);
+            });
+        }
+
+        function fetchOpenbisData() {
+            toggleLoading(true);
+            updateSteps("Fetching data from openBIS...");
+
+            fetch('http://localhost:5001/data/types', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/zip',
+                }
+            })
+                .then(response => {
+                    if (response.ok) {
+                        updateSteps("Data fetched successfully. Unzipping file...");
+                        return response.blob();
+                    }
+                    throw new Error('Network response was not ok.');
+                })
+                .then(blob => {
+                    const jsZip = new JSZip();
+                    return jsZip.loadAsync(blob);
+                })
+                .then(zip => {
+                    updateSteps("Zip file unzipped. Listing files...");
+                    updateSteps(JSON.stringify(Object.keys(zip.files)));
+                    const filename = 'response.json';
+                    if (filename in zip.files) {
+                        return zip.files[filename].async("string");
+                    }
+                    throw new Error('File not found in zip');
+                })
+                .then(jsonString => {
+                    updateSteps("JSON extracted. Parsing data...");
+                    const data = JSON.parse(jsonString);
+                    updateTypeSelection(data);
+                    updateSteps("Data parsed and UI updated.");
+                    toggleLoading(false);
+                    showFilterSection();
+                })
+                .catch(error => {
+                    handleError('Failed to fetch or process data.');
+                    updateSteps("Error occurred.");
+                });
+        }
+
+        function updateTypeSelection(data) {
+            const openbisTypes = new Set(data);
+            const openbisTypeSelect = document.getElementById('openbisTypeSelect');
+            openbisTypeSelect.innerHTML = '<option value="">Select a type</option>';
+            openbisTypes.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                openbisTypeSelect.appendChild(option);
+            });
+        }
+
+        function fetchFilteredOpenbisData() {
+            const selectedType = document.getElementById('openbisTypeSelect').value;
+            if (selectedType) {
+                toggleLoading(true);
+                updateSteps("Fetching filtered data for type: " + selectedType);
+                fetch(`http://localhost:5001/data/filter?type=${encodeURIComponent(selectedType)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateOpenbisList(data);
+                        updateSteps("Filtered data fetched and displayed.");
+                        toggleLoading(false);
+                    })
+                    .catch(error => {
+                        handleError('Failed to fetch filtered data.');
+                        updateSteps("Error occurred while fetching filtered data.");
+                    });
+            } else {
+                alert('Please select a type to filter by!');
+            }
+        }
+
+        function importData(item) {
+            fetch('data/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(item)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        alert(`Data for item ID: ${item.id} has been successfully imported.`);
+                    } else {
+                        throw new Error('Failed to import data.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while importing data.');
+                });
+        }
+
+        function updateOpenbisList(data) {
+            const list = document.getElementById('openbisDataList');
+            list.innerHTML = '';
+            data.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `
+            <span>
+                <strong>ID:</strong> ${item.id} 
+                <strong>Type:</strong> ${item.type} 
+                <strong>Title:</strong> ${item.title}
+            </span>
+            <button class="btn btn-outline-secondary btn-sm" onclick='importData(${JSON.stringify(item)})'>Import Data</button>
+        `;
+                list.appendChild(li);
+            });
+        }
+
+        function updateSteps(message) {
+            const stepsElement = document.getElementById('openbisSteps');
+            const step = document.createElement('div');
+            step.textContent = message;
+            stepsElement.appendChild(step);
+        }
+
+        function showFilterSection() {
+            const filterSection = document.getElementById('filterSection');
+            filterSection.classList.remove('d-none');
+            filterSection.classList.add('d-flex');
+        }
+
+    </script>
+
+    <hr>
+
+    <div class="container mt-5">
+        <div class="col-6">
+            <h1 class="mb-4">Display RO-Crate Zip File</h1>
+            <form id="uploadForm1" class="mb-4">
+                <input type="file" id="fileInput1" accept=".zip" class="form-control mb-2">
+                <button type="button" onclick="uploadRocrate()" class="btn btn-primary">Upload</button>
+            </form>
+            <h2>Results:</h2>
+            <pre id="result1" class="bg-light p-3 border"></pre>
+        </div>
     </div>
 
     <script>

@@ -10,12 +10,12 @@ import tempfile
 
 app = Flask(__name__)
 CORS(app)
-app.config['UPLOAD_FOLDER'] = 'aida/temp_uploads/'  # Define where uploaded files will be stored
-app.config['RO_CRATE_FOLDER'] = 'aida/ro_crate/'
+app.config['UPLOAD_FOLDER'] = './temp_uploads/'  # Define where uploaded files will be stored
+app.config['RO_CRATE_FOLDER'] = './ro_crate/'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit to 16MB
 
 AIDA_DATA = [
-    {"id": "AFRT-56", "type": "@as.dto.dataset.DataSet", "title": "Research xy"},
+    {"id": "AFRT-56", "type": "@as.dto.dataset.DataSet", "title": "Research xy", "metadata":""},
     {"id": "AFRT-51", "type": "@aiida.Simulation", "title": "Data related to xy"},
     {"id": "WFML-1", "type": "@aiida.Workflow", "title": "Experiment 1"},
     {"id": "WFML-2", "type": "@as.dto.experiment.Experiment", "title": "Experiment 2"},
@@ -31,6 +31,20 @@ def index():
 def get_all_data():
     return jsonify(AIDA_DATA)
 
+@app.route('/data/import', methods=['POST'])
+def import_data():
+    try:
+        new_data = request.json
+        print(new_data)
+        # Check if item with the same ID already exists
+        if any(item['id'] == new_data['id'] for item in AIDA_DATA):
+            return jsonify({"message": "Item with this ID already exists."}), 400
+        # Add new data to the list
+        AIDA_DATA.append(new_data)
+        return jsonify({"message": "Data imported successfully."}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
 @app.route('/data/filter', methods=['GET'])
 def filter_data():
     filter_type = request.args.get('type')
@@ -38,9 +52,6 @@ def filter_data():
         return "Type parameter is required for filtering.", 400
     filtered_data = [item for item in AIDA_DATA if item['type'].lower() == filter_type.lower()]
     return jsonify(filtered_data)
-
-# Example data that you might want to include in the JSON file
-data_types = ["@DataSet", "@Dataset", "@Experiment", "@Object"]
 
 @app.route('/data/types', methods=['GET'])
 def get_all_types():
@@ -61,7 +72,6 @@ def get_all_types():
     crate.write_zip(crate_dir)
     
     return send_file('temp_uploads/ro_crate.zip', as_attachment=True, download_name='ro_crate.zip')
-
 
 def extract_and_read_rocrate(file_path):
     with tempfile.TemporaryDirectory() as temp_dir:
