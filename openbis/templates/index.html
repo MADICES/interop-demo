@@ -42,7 +42,7 @@
                     <table class="table table-striped mt-3" id="dataTable">
                         <thead>
                             <tr>
-                                <th>PermID</th>
+                                <th>ID</th>
                                 <th>Type</th>
                                 <th>Title</th>
                                 <th>Ontology</th>
@@ -155,7 +155,7 @@
                 const cellTitle = row.insertCell(2);
                 const cellOnt = row.insertCell(3);
                 const cellMetadata = row.insertCell(4);
-                cellId.textContent = item.permId;
+                cellId.textContent = item.id;
                 cellType.textContent = item.type;
                 cellTitle.textContent = item.title;
                 cellOnt.textContent = item.ontology;
@@ -231,112 +231,8 @@
 
     </script>
 
-    <!-- <div class="container mt-5">
-        <div class="row">
-            <div class="col-6">
-                <h1 class="mb-4">OpenBIS Data Viewer</h1>
-                <div class="mb-3">
-                    <button onclick="fetchData()" class="btn btn-primary">Fetch Data</button>
-                </div>
-                <div class="mb-3">
-                    <h2>Filter by Type</h2>
-                    <select id="typeSelect" class="form-select mb-3">
-                        <option value="">Select a type</option>
-                    </select>
-                    <button onclick="fetchFilteredData()" class="btn btn-success">Fetch Filtered Data</button>
-                </div>
-                <ul id="dataList" class="list-group mt-3"></ul>
-            </div>
-            <div class="col-6">
-                <h1 class="mb-4">Connect to AiiDA</h1>
-                <div class="mb-3">
-                    <button onclick="fetchAIDAData()" class="btn btn-primary">Fetch AiiDA types</button>
-                </div>
-                <div id="aidatypes" class="mb-3">
-
-                </div>
-                <div class="mb-3">
-                    <h2>Filter by AiiDA Type</h2>
-                    <select id="aidatypeSelect" class="form-select mb-3">
-                        <option value="">Select a type</option>
-                    </select>
-                    <button onclick="fetchFilteredAidaData()" class="btn btn-success">Fetch Filtered AiiDA Data</button>
-                </div>
-                <ul id="aidadataList" class="list-group mt-3"></ul>
-            </div>
-        </div>
-    </div> -->
-
-    <!-- <script>
-        function fetchAIDAData() {
-            fetch('http://localhost:5002/data/types', {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/zip',
-                }
-            })
-                .then(response => {
-                    if (response.ok) return response.blob();
-                    throw new Error('Network response was not ok.');
-                })
-                .then(blob => {
-                    // Use JSZip to read the blob as a zip file
-                    const jsZip = new JSZip();
-                    return jsZip.loadAsync(blob);
-                })
-                .then(zip => {
-                    // Assume 'response.json' is the name of the file inside the RO-Crate zip
-                    const filename = 'response.json';
-                    if (filename in zip.files) {
-                        return zip.files[filename].async("string"); // Get the file content as a string
-                    }
-                    throw new Error('File not found in zip');
-                })
-                .then(jsonString => {
-                    // Parse JSON string and log the data or do something with it
-                    const data = JSON.parse(jsonString);
-                    console.log(data);
-                    // Optionally update the UI here to display the data
-                    const aidatypes = new Set(data);
-                    const aidatypeSelect = document.getElementById('aidatypeSelect');
-                    aidatypeSelect.innerHTML = '<option value="">Select a type</option>'; // Reset
-                    aidatypes.forEach(type => {
-                        console.log(type);
-                        const option = document.createElement('option');
-                        option.value = type;
-                        option.textContent = type;
-                        aidatypeSelect.appendChild(option);
-                    });
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        function fetchFilteredAidaData() {
-            var selectedType = document.getElementById('aidatypeSelect').value;
-            if (selectedType) {
-                fetch(`http://localhost:5002/data/filter?type=${encodeURIComponent(selectedType)}`)
-                    .then(response => response.json())
-                    .then(data => updateAidaList(data))
-                    .catch(error => console.error('Error:', error));
-            } else {
-                alert('Please select a type to filter by!');
-            }
-        }
-
-        function updateAidaList(data) {
-            const list = document.getElementById('aidadataList');
-            list.innerHTML = ''; // Clear previous entries
-            data.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item';
-                li.textContent = `ID: ${item.id}, Type: ${item.type}`;
-                list.appendChild(li);
-            });
-        }
-
- </script> -->
-
     <hr>
+    
     <div class="container mt-5">
         <h1>RO-Crate Exporter</h1>
         <div class="mb-3">

@@ -1,3 +1,4 @@
+import io
 from flask import Flask, render_template, request, jsonify, send_file
 from rocrate.rocrate import ROCrate
 from flask_cors import CORS
@@ -15,15 +16,15 @@ app.config['RO_CRATE_FOLDER'] = 'ro_crate/'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit to 16MB
 
 OPENBIS_DATA = [
-    {"permId": "20240424084127547-750", "type": "@as.dto.dataset.DataSet", "title": "Research in Ontology", "metadata": {"info":"1D image"}, "ontology": "@https://openbis.ont.ethz.ch//DataSet"},
-    {"permId": "20240424084127547-751", "type": "@as.dto.dataset.Dataset", "title": "Data related to Ontology Research", "metadata": {"info":"2D image"}, "ontology": "@https://openbis.ont.ethz.ch//DataSet"},
-    {"permId": "20240320011823235-1", "type": "@as.dto.experiment.Experiment", "title": "Experiment 1", "metadata": {"info":"Experiment on algea"}, "ontology": "@https://openbis.ont.ethz.ch//Experiment"},
-    {"permId": "20240320011823235-2", "type": "@as.dto.experiment.Experiment", "title": "Experiment 2", "metadata": None, "ontology": "@https://openbis.ont.ethz.ch//Experiment"},
-    {"permId": "20240402011823235-1280", "type": "@as.dto.object.Object", "title": "Protein", "metadata": {"hasBioPolymerSequence":"AAACCTTTGTACAATG"}, "ontology": "@https://schema.org/Protein"},
-    {"permId": "20240402011823235-1289", "type": "@as.dto.dataset.Object", "title": "Molecul", "metadata": {"inChIKey":"ACTMS", 
-                                                                                                            "iupacName": "Actomyosin", 
-                                                                                                            "molecularFormula":"", 
-                                                                                                            "molecularWeight": ""}, "ontology": "@https://schema.org/MolecularEntity"}
+    {"id": "20240424084127547-750", "type": "@as.dto.dataset.DataSet", "title": "Research in Ontology", "metadata": {"info":"1D image"}, "ontology": "@https://openbis.ont.ethz.ch/DataSet"},
+    {"id": "20240424084127547-751", "type": "@as.dto.dataset.Dataset", "title": "Data related to Ontology Research", "metadata": {"info":"2D image"}, "ontology": "@https://openbis.ont.ethz.ch/DataSet"},
+    {"id": "20240320011823235-1", "type": "@as.dto.experiment.Experiment", "title": "Experiment 1", "metadata": {"info":"Experiment on algea"}, "ontology": "@https://openbis.ont.ethz.ch/Experiment"},
+    {"id": "20240320011823235-2", "type": "@as.dto.experiment.Experiment", "title": "Experiment 2", "metadata": None, "ontology": "@https://openbis.ont.ethz.ch/Experiment"},
+    {"id": "20240402011823235-1280", "type": "@as.dto.object.Object", "title": "Protein", "metadata": {"hasBioPolymerSequence":"AAACCTTTGTACAATG"}, "ontology": "@https://schema.org/Protein"},
+    {"id": "20240402011823235-1289", "type": "@as.dto.dataset.Object", "title": "Molecul", "metadata": {"inChIKey":"MTHN", 
+                                                                                                            "iupacName": "Methane", 
+                                                                                                            "molecularFormula":"CH4", 
+                                                                                                            "molecularWeight": "16.043 g/mol-1"}, "ontology": "@https://schema.org/MolecularEntity"}
 ]
 
 @app.route('/')
@@ -36,6 +37,7 @@ def get_all_data():
 
 @app.route('/data/filter', methods=['GET'])
 def filter_data():
+    #format = request.args.get('format')
     filter_type = request.args.get('type')
     if not filter_type:
         return "Type parameter is required for filtering.", 400
@@ -80,7 +82,6 @@ def get_all_types():
     
     return send_file('temp_uploads/ro_crate.zip', as_attachment=True, download_name='ro_crate.zip')
 
-
 @app.route('/upload_rocrate', methods=['POST'])
 def upload_rocrate():
     if 'file' not in request.files:
@@ -98,7 +99,6 @@ def upload_rocrate():
             return jsonify(response_content)
         else:
             return jsonify({'message': 'No RESPONSE type file found in the RO-Crate or failed to read.'})
-
 
 @app.route('/files', methods=['GET'])
 def list_files():
@@ -181,6 +181,50 @@ def download():
     
     response.call_on_close(lambda: after_request(response))
     return response
+
+@app.route('/receive', methods=['POST'])
+def receive_data():
+    data = request.json
+    print("Data received:", data)
+    return jsonify({"message": "Data received successfully", "yourData": data}), 200
+
+@app.route('/receive_zip', methods=['POST'])
+def receive_zip():
+    print(request.files['file'])
+    if 'file' not in request.files:
+        return jsonify({"message": "No file part"}), 400
+
+    file = request.files['file']
+    print(file.filename)
+    if file.filename == '':
+        return jsonify({"message": "No selected file"}), 400
+
+    if file and file.filename.endswith('.zip'):
+        try:
+            # Make sure to get the correct file stream
+            # `file.stream` might not work properly directly, so use BytesIO
+            byte_stream = io.BytesIO(file.read())  # Read the file stream into a BytesIO buffer
+
+            # Now use the BytesIO object with zipfile
+            zip_file = zipfile.ZipFile(byte_stream, 'r')
+            print(zip_file.namelist())  # List contents of the zip to confirm successful opening
+
+            with zip_file.open('ro-crate-metadata.json') as f:
+                data = f.read()
+                print(json.loads(data))
+            
+            # Assuming there's a specific file you want to read from the zip
+            with zip_file.open('query.json') as f:
+                print(type(f))
+                data = f.read()
+                print(json.loads(data))  # Output the contents of the data.json file
+                OPENBIS_DATA.append(json.loads(data))
+
+            return jsonify({"message": "Zip file processed successfully"}), 200
+        except zipfile.BadZipFile:
+            return jsonify({"message": "Invalid zip file"}), 400
+    else:
+        return jsonify({"message": "Unsupported file type"}), 400
 
 if __name__ == '__main__':
     app.run(port=5001, debug=True)

@@ -11,7 +11,7 @@ This Python application is built using Flask to handle file uploads and work wit
 - Python 3.x
 - Flask
 - Flask-CORS
-- ro-crate-py
+- rocrate
 
 ## Installation
 
@@ -21,7 +21,7 @@ This Python application is built using Flask to handle file uploads and work wit
 
 3. Install the required Python packages using pip:
    ```bash
-   pip install Flask Flask-CORS ro-crate-py
+   pip install Flask Flask-CORS rocrate
    ```
 
 ## Configuration
@@ -57,3 +57,14 @@ Once the application is running, you can access the following endpoints:
 ## Notes
 
 Ensure that the directories specified in `UPLOAD_FOLDER` and `RO_CRATE_FOLDER` exist or are created by the application before uploading or exporting files.
+
+
+AiiDAlab queries for a molecule (types, then Molecule type)
+openBIS shows the auto-generated RO-Crate
+AiiDAlab received the crate
+AiiDAlab translates the Molecule object onto its own schema
+AiiDAlab measures something (demonstrating understanding of object)
+AiiDAlab attaches Simulation object as a HasChild (or some other ontological property) using its own language (outgoing node)
+AiiDAlab ships out a crate
+openBIS translates the crate to its own schema
+openBIS shows parent-child relationship following the ids

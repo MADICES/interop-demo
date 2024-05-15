@@ -1,3 +1,8 @@
+import io
+import logging
+import time
+
+import requests
 from flask import Flask, render_template, request, jsonify, send_file
 from rocrate.rocrate import ROCrate
 from flask_cors import CORS
@@ -5,7 +10,7 @@ import os
 import zipfile
 import shutil
 from werkzeug.utils import secure_filename
-import json
+import json 
 import tempfile
 
 app = Flask(__name__)
@@ -14,13 +19,22 @@ app.config['UPLOAD_FOLDER'] = './temp_uploads/'  # Define where uploaded files w
 app.config['RO_CRATE_FOLDER'] = './ro_crate/'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit to 16MB
 
-AIDA_DATA = [
-    {"id": "AFRT-56", "type": "@as.dto.dataset.DataSet", "title": "Research xy", "metadata":""},
-    {"id": "AFRT-51", "type": "@aiida.Simulation", "title": "Data related to xy"},
-    {"id": "WFML-1", "type": "@aiida.Workflow", "title": "Experiment 1"},
-    {"id": "WFML-2", "type": "@as.dto.experiment.Experiment", "title": "Experiment 2"},
-    {"id": "M-89", "type": "@https://schema.org/MolecularEntity", "title": "Crystal"},
-    {"id": "TPMS", "type": "@https://schema.org/Protein", "title": "Tropomyosin"}  
+AIIDA_DATA = [
+    {"id": "SIM-51", "type": "@aiida.Simulation", "title": "Data related to xy", "metadata": {"id":"5235211", "aiida_version": "2.4.3", "creation_parameters": {
+		"entities_starting_set": {
+			"node": [
+				"0e275ed7-c1ec-4926-b0d0-3b7cc97e9ab2"
+			]
+		},
+		"include_authinfos": False,
+		"include_comments": True}
+        }, "ontology": "@https://aiida.net/Simulation"},
+    {"id": "WFML-1", "type": "@aiida.Workflow", "title": "Experiment 1", "metadata": {"uuid": "1e673a08-a0ff-47ad-9a09-52321f6dc2dc", "cmdline_params": ["-i", "aiida.inp"]}, "ontology": "@https://aiida.net/Workflow"},
+    {"id": "M-89", "type": "@aiida.Object", "title": "Crystal", "metadata": {"inChIKey":"ETHNL", 
+                                                                            "iupacName": "Ethanol", 
+                                                                            "molecularFormula":"C2H5OH", 
+                                                                            "molecularWeight": "46.068 g/mol"}, "ontology": "@https://schema.org/MolecularEntity"},
+    {"id": "TPMS", "type": "@aiida.Object", "title": "Tropomyosin", "metadata": {"hasBioPolymerSequence":"GGGTTCTCTATCTCTAAAAGGTGTCAA"}, "ontology": "@https://schema.org/Protein"}  
 ]
 
 @app.route('/')
@@ -29,18 +43,17 @@ def index():
 
 @app.route('/data', methods=['GET'])
 def get_all_data():
-    return jsonify(AIDA_DATA)
+    return jsonify(AIIDA_DATA)
 
 @app.route('/data/import', methods=['POST'])
 def import_data():
     try:
         new_data = request.json
-        print(new_data)
         # Check if item with the same ID already exists
-        if any(item['id'] == new_data['id'] for item in AIDA_DATA):
+        if any(item['id'] == new_data['id'] for item in AIIDA_DATA):
             return jsonify({"message": "Item with this ID already exists."}), 400
         # Add new data to the list
-        AIDA_DATA.append(new_data)
+        AIIDA_DATA.append(new_data)
         return jsonify({"message": "Data imported successfully."}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
@@ -50,7 +63,7 @@ def filter_data():
     filter_type = request.args.get('type')
     if not filter_type:
         return "Type parameter is required for filtering.", 400
-    filtered_data = [item for item in AIDA_DATA if item['type'].lower() == filter_type.lower()]
+    filtered_data = [item for item in AIIDA_DATA if item['type'].lower() == filter_type.lower()]
     return jsonify(filtered_data)
 
 @app.route('/data/types', methods=['GET'])
@@ -62,7 +75,7 @@ def get_all_types():
     # Create the JSON content
     response_file_path = os.path.join(temp_dir, 'response.json')
     with open(response_file_path, 'w') as f:
-        json.dump([item['type'] for item in AIDA_DATA], f, indent=4)
+        json.dump([item['type'] for item in AIIDA_DATA], f, indent=4)
     
     # Add the JSON file to the crate
     crate.add_file(response_file_path, './response.json', properties={"@type": "RESPONSE"})
@@ -188,6 +201,100 @@ def download():
     
     response.call_on_close(lambda: after_request(response))
     return response
+
+@app.route('/data/start_simulation', methods=['GET'])
+def start_simulation():
+    try:
+        selected_object_id = request.args.get('id')
+        selected_object_index = next((index for index, item in enumerate(AIIDA_DATA) if item['id'] == selected_object_id), None)
+
+        if selected_object_index is None:
+            return jsonify({"message": "Selected object not found"}), 404
+
+        # Reference the selected object directly for easier modification
+        selected_object = AIIDA_DATA[selected_object_index]
+        # Create a new simulation object
+        new_simulation = {
+            "id": f"SIM-{int(time.time())}",  # Generate a new unique ID based on the current time
+            "type": "@aiida.Simulation",
+            "title": "New Simulation on " + selected_object_id,
+            "metadata": {
+                "creation_parameters": {
+                    "entities_starting_set": {
+                        "node": [
+                            "0e275ed7-c1ec-4926-b0d0-3b7cc97e9ab2"
+                        ]
+                    },
+                    "include_authinfos": False,
+                    "include_comments": True
+                },
+                "aiida_version": "2.4.3"
+            },
+            "ontology": "@https://aiida.net/Simulation"
+        }
+        
+        if 'has_child' not in selected_object['metadata']:
+            selected_object['metadata']['has_child'] = []
+        selected_object['metadata']['has_child'].append(new_simulation)
+        
+        AIIDA_DATA[selected_object_index] = selected_object
+
+        return jsonify(selected_object), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@app.route('/api/export', methods=['POST'])
+def send_data():
+
+    objectToExport = request.json
+    temp_dir = app.config['RO_CRATE_FOLDER']
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+    
+    crate = ROCrate()
+            
+    # Create the JSON content
+    response_file_path = os.path.join(temp_dir, 'query.json')
+    with open(response_file_path, 'w') as f:
+        json.dump(objectToExport, f, indent=4)
+    
+    # Add the JSON file to the crate
+    crate.add_file(response_file_path, './query.json', properties={"@type": "PUT"})
+
+    # Write the crate to the temporary directory
+    crate_dir = os.path.join(temp_dir, 'ro_crate')
+    crate_path = crate.write_zip(crate_dir)
+
+    #shutil.rmtree(temp_dir)
+
+    
+    #url = 'http://localhost:5001/receive'
+    #response = requests.post(url, json=crate)
+    
+    # Create a zip file in memory
+    """ memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w') as zf:
+        for e in crate.get_entities():
+            print(e)
+            if(e.type != "Dataset"):
+                # Adding a file named 'data.json' with content 'data'
+                zf.write(e.id)
+
+    # Important: move the cursor back to the beginning of the BytesIO buffer
+    memory_file.seek(0) """
+    
+    url = 'http://localhost:5001/receive_zip'
+
+    files = {'file': ('filename.zip', open(crate_path, 'rb'), 'application/zip')}
+    #files = {'file': ('ro_crate.zip', memory_file, 'application/zip')}
+    
+    response = requests.post(url, files=files)
+
+    print(response)
+    if response.status_code == 200:
+        return jsonify({"message": "Data sent to openBIS successfully", "responseFromopenBIS": response.json()}), 200
+    else:
+        return jsonify({"message": "Failed to send data to openBIS"}), 500
 
 if __name__ == '__main__':
     app.run(port=5002, debug=True)

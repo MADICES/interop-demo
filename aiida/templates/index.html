@@ -100,40 +100,51 @@
     <div class="container mt-5">
         <div id="loading" class="text-center my-3" style="display: none;">Loading...</div>
         <div id="error" class="alert alert-danger mt-3" style="display: none;"></div>
-        <div class="row">
-            <div class="col-6">
-                <h1 class="mb-4">AiiDA Data Viewer</h1>
-                <div class="mb-3">
-                    <h2>Filter by Type</h2>
-                    <div class="mb-3 d-flex align-items-center">
-                        <button onclick="fetchFilteredData()" class="btn btn-success">Filter</button>
-                        <select id="typeSelect" class="form-select">
-                            <option value="">Select a type</option>
-                        </select>
-
-                    </div>
+        <div class="col-12">
+            <h1 class="mb-4">AiiDA Data Viewer</h1>
+            <div class="mb-3">
+                <h2>Filter by Type</h2>
+                <div class="mb-3 d-flex align-items-center">
+                    <button onclick="fetchFilteredData()" class="btn btn-success">Filter</button>
+                    <select id="typeSelect" class="form-select"></select>
                 </div>
-                <ul id="dataList" class="list-group mt-3"></ul>
             </div>
-
-            <div class="col-6">
-                <h1 class="mb-4">Connect to openBIS</h1>
-                <div class="mb-3">
-                    <button onclick="fetchOpenbisData()" class="btn btn-primary">Fetch openBIS types</button>
-                </div>
-                <div id="openbisSteps" class="mb-3"></div>
-
-                <div id="filterSection" class="mb-3 d-none align-items-center">
-                    <h2>Filter by OpenBIS Type</h2>
-                    <div class="mb-3">
-                        <select id="openbisTypeSelect" class="form-select me-2">
-                            <option value="">Select a type</option>
-                        </select>
-                        <button onclick="fetchFilteredOpenbisData()" class="btn btn-success">Fetch from OpenBIS</button>
-                    </div>
-                </div>
-                <ul id="openbisDataList" class="list-group mt-3"></ul>
+            <div class="table-responsive">
+                <table class="table table-striped mt-3" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Title</th>
+                            <th>Ontology</th>
+                            <th>Metadata</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data rows will be appended here -->
+                    </tbody>
+                </table>
             </div>
+        </div>
+
+        <div class="col-12">
+            <h1 class="mb-4">Connect to openBIS</h1>
+            <div class="mb-3">
+                <button onclick="fetchOpenbisData()" class="btn btn-primary">Fetch openBIS Ontologies</button>
+            </div>
+            <div id="openbisSteps" class="mb-3"></div>
+
+            <div id="filterSection" class="mb-3 d-none align-items-center">
+
+                <h2>Filter OpenBIS Ontology: </h2>
+                <div class="mb-3 d-flex align-items-center">
+                    <select id="openbisTypeSelect" class="form-select me-2">
+                        <option value="">Select an Ontology</option>
+                    </select>
+                    <button onclick="fetchFilteredOpenbisData()" class="btn btn-success">Fetch from OpenBIS</button>
+                </div>
+            </div>
+            <ul id="openbisDataList" class="list-group mt-3"></ul>
         </div>
     </div>
 
@@ -166,6 +177,7 @@
                 .then(data => {
                     updateList(data);
                     populateTypes(data);
+                    populateSelectSimulation(data);
                     toggleLoading(false);
                 })
                 .catch(error => handleError('Failed to fetch data.'));
@@ -205,13 +217,20 @@
         }
 
         function updateList(data) {
-            const list = document.getElementById('dataList');
-            list.innerHTML = '';
+            const tableBody = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
             data.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item';
-                li.innerHTML = `<strong>ID:</strong> ${item.id} <strong>Type:</strong> ${item.type} <strong>Title:</strong> ${item.title}`;
-                list.appendChild(li);
+                const row = tableBody.insertRow();
+                const cellId = row.insertCell(0);
+                const cellType = row.insertCell(1);
+                const cellTitle = row.insertCell(2);
+                const cellOnt = row.insertCell(3);
+                const cellMetadata = row.insertCell(4);
+                cellId.textContent = item.id;
+                cellType.textContent = item.type;
+                cellTitle.textContent = item.title;
+                cellOnt.textContent = item.ontology;
+                cellMetadata.textContent = JSON.stringify(item.metadata);
             });
         }
 
@@ -276,7 +295,7 @@
             if (selectedType) {
                 toggleLoading(true);
                 updateSteps("Fetching filtered data for type: " + selectedType);
-                fetch(`http://localhost:5001/data/filter?type=${encodeURIComponent(selectedType)}`)
+                fetch(`http://localhost:5001/data/filter?type=${encodeURIComponent(selectedType)}&format=ROC`)
                     .then(response => response.json())
                     .then(data => {
                         updateOpenbisList(data);
@@ -322,8 +341,7 @@
                 li.innerHTML = `
             <span>
                 <strong>ID:</strong> ${item.id} 
-                <strong>Type:</strong> ${item.type} 
-                <strong>Title:</strong> ${item.title}
+                <strong>Ontology:</strong> ${item.ontology} 
             </span>
             <button class="btn btn-outline-secondary btn-sm" onclick='importData(${JSON.stringify(item)})'>Import Data</button>
         `;
@@ -342,6 +360,107 @@
             const filterSection = document.getElementById('filterSection');
             filterSection.classList.remove('d-none');
             filterSection.classList.add('d-flex');
+        }
+
+    </script>
+
+    <hr>
+
+    <div class="container">
+        <h1 class="mb-4">Run Simulations</h1>
+        <div class="col-12">
+            <h3>Select an Object</h3>
+            <div class="mt-4 d-flex align-items-center">
+                <select id="objectSelect" class="form-select mb-3">
+                    <option value="">Select an Object</option>
+                </select>
+                <button onclick="startSimulation()" class="btn btn-warning">Start Simulation</button>
+            </div>
+        </div>
+        <div id="sim_message" class="alert alert-success d-none"></div>
+
+    </div>
+
+
+    <script>
+        // Function to start the simulation process
+        function populateSelectSimulation(data) {
+            const objectsList = data.filter(item => item.type !== "@aiida.Simulation" && item.type !== "@aiida.Workflow");
+            const objectSelect = document.getElementById('objectSelect');
+            objectSelect.innerHTML = '<option value="">Select an Object</option>';
+            objectsList.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id; // Store item as a string in the value
+                option.textContent = item.id + " - " + item.title;
+                objectSelect.appendChild(option);
+            });
+        }
+
+        function startSimulation() {
+            const selectedObjectId = document.getElementById('objectSelect').value;
+
+            if (!selectedObjectId) {
+                alert('Please select an object to link with the simulation.');
+                return;
+            }
+
+            fetch(`/data/start_simulation?id=${encodeURIComponent(selectedObjectId)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Failed to start simulation.');
+                    }
+                })
+                .then(response => displayNewObject(response))
+                .catch(error => {
+                    handleError('Failed to fetch or process data.');
+                });
+        }
+
+        function displayNewObject(newObject) {
+            const displayArea = document.getElementById('sim_message');
+            displayArea.classList.remove('d-none');
+            displayArea.textContent = "Updated Object with new simulation: " + JSON.stringify(newObject, null, 2);
+
+            // Create the Export to openBIS button if it does not exist
+            let exportButton = document.getElementById('exportToOpenBIS');
+            if (!exportButton) {
+                exportButton = document.createElement('button');
+                exportButton.id = 'exportToOpenBIS';
+                exportButton.textContent = 'Export to openBIS';
+                exportButton.className = 'btn btn-success mt-3';
+                exportButton.onclick = () => exportToOpenBIS(newObject);
+                displayArea.parentNode.insertBefore(exportButton, displayArea.nextSibling);
+            }
+        }
+
+        // Function to create an RO-Crate and send it to another application
+        function exportToOpenBIS(newObject) {
+            fetch('/api/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newObject)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Failed to export to openBIS.');
+                    }
+                })
+                .then(data => alert('Successfully exported to openBIS.'))
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred during the export to openBIS.');
+                });
         }
 
     </script>
