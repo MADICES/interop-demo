@@ -1,4 +1,3 @@
-import io
 from flask import Flask, render_template, request, jsonify, send_file
 from rocrate.rocrate import ROCrate
 from flask_cors import CORS
@@ -11,20 +10,17 @@ import tempfile
 
 app = Flask(__name__)
 CORS(app)
-app.config['UPLOAD_FOLDER'] = 'temp_uploads/'  # Define where uploaded files will be stored
-app.config['RO_CRATE_FOLDER'] = 'ro_crate/'
+app.config['UPLOAD_FOLDER'] = 'aida/temp_uploads/'  # Define where uploaded files will be stored
+app.config['RO_CRATE_FOLDER'] = 'aida/ro_crate/'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit to 16MB
 
-OPENBIS_DATA = [
-    {"id": "20240424084127547-750", "type": "@as.dto.dataset.DataSet", "title": "Research in Ontology", "metadata": {"info":"1D image"}, "ontology": "@https://openbis.ont.ethz.ch/DataSet"},
-    {"id": "20240424084127547-751", "type": "@as.dto.dataset.Dataset", "title": "Data related to Ontology Research", "metadata": {"info":"2D image"}, "ontology": "@https://openbis.ont.ethz.ch/DataSet"},
-    {"id": "20240320011823235-1", "type": "@as.dto.experiment.Experiment", "title": "Experiment 1", "metadata": {"info":"Experiment on algea"}, "ontology": "@https://openbis.ont.ethz.ch/Experiment"},
-    {"id": "20240320011823235-2", "type": "@as.dto.experiment.Experiment", "title": "Experiment 2", "metadata": None, "ontology": "@https://openbis.ont.ethz.ch/Experiment"},
-    {"id": "20240402011823235-1280", "type": "@as.dto.object.Object", "title": "Protein", "metadata": {"hasBioPolymerSequence":"AAACCTTTGTACAATG"}, "ontology": "@https://schema.org/Protein"},
-    {"id": "20240402011823235-1289", "type": "@as.dto.dataset.Object", "title": "Molecul", "metadata": {"inChIKey":"MTHN", 
-                                                                                                            "iupacName": "Methane", 
-                                                                                                            "molecularFormula":"CH4", 
-                                                                                                            "molecularWeight": "16.043 g/mol-1"}, "ontology": "@https://schema.org/MolecularEntity"}
+AIDA_DATA = [
+    {"id": "AFRT-56", "type": "@as.dto.dataset.DataSet", "title": "Research xy"},
+    {"id": "AFRT-51", "type": "@aiida.Simulation", "title": "Data related to xy"},
+    {"id": "WFML-1", "type": "@aiida.Workflow", "title": "Experiment 1"},
+    {"id": "WFML-2", "type": "@as.dto.experiment.Experiment", "title": "Experiment 2"},
+    {"id": "M-89", "type": "@https://schema.org/MolecularEntity", "title": "Crystal"},
+    {"id": "TPMS", "type": "@https://schema.org/Protein", "title": "Tropomyosin"}  
 ]
 
 @app.route('/')
@@ -33,19 +29,39 @@ def index():
 
 @app.route('/data', methods=['GET'])
 def get_all_data():
-    return jsonify(OPENBIS_DATA)
+    return jsonify(AIDA_DATA)
 
 @app.route('/data/filter', methods=['GET'])
 def filter_data():
-    #format = request.args.get('format')
     filter_type = request.args.get('type')
     if not filter_type:
         return "Type parameter is required for filtering.", 400
-    if filter_type == "all":
-        return jsonify(OPENBIS_DATA)
-    filtered_data = [item for item in OPENBIS_DATA if item['ontology'].lower() == filter_type.lower()]
-
+    filtered_data = [item for item in AIDA_DATA if item['type'].lower() == filter_type.lower()]
     return jsonify(filtered_data)
+
+# Example data that you might want to include in the JSON file
+data_types = ["@DataSet", "@Dataset", "@Experiment", "@Object"]
+
+@app.route('/data/types', methods=['GET'])
+def get_all_types():
+    temp_dir = app.config['UPLOAD_FOLDER']
+    # Create a new RO-Crate in the temporary directory
+    crate = ROCrate()
+
+    # Create the JSON content
+    response_file_path = os.path.join(temp_dir, 'response.json')
+    with open(response_file_path, 'w') as f:
+        json.dump([item['type'] for item in AIDA_DATA], f, indent=4)
+    
+    # Add the JSON file to the crate
+    crate.add_file(response_file_path, './response.json', properties={"@type": "RESPONSE"})
+
+    # Write the crate to the temporary directory
+    crate_dir = os.path.join(temp_dir, 'ro_crate')
+    crate.write_zip(crate_dir)
+    
+    return send_file('temp_uploads/ro_crate.zip', as_attachment=True, download_name='ro_crate.zip')
+
 
 def extract_and_read_rocrate(file_path):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -62,27 +78,6 @@ def extract_and_read_rocrate(file_path):
                 with open(response_file_path, 'r') as file:
                     return json.load(file)
         return None
-
-@app.route('/data/types', methods=['GET'])
-def get_all_types():
-    temp_dir = app.config['UPLOAD_FOLDER']
-    # Create a new RO-Crate in the temporary directory
-    crate = ROCrate()
-
-    # Create the JSON content
-    response_file_path = os.path.join(temp_dir, 'response.json')
-    with open(response_file_path, 'w') as f:
-        json.dump([item['ontology'] for item in OPENBIS_DATA], f, indent=4)
-
-    
-    # Add the JSON file to the crate
-    crate.add_file(response_file_path, './response.json', properties={"@type": "RESPONSE"})
-
-    # Write the crate to the temporary directory
-    crate_dir = os.path.join(temp_dir, 'ro_crate')
-    crate.write_zip(crate_dir)
-    
-    return send_file('temp_uploads/ro_crate.zip', as_attachment=True, download_name='ro_crate.zip')
 
 @app.route('/upload_rocrate', methods=['POST'])
 def upload_rocrate():
@@ -184,49 +179,5 @@ def download():
     response.call_on_close(lambda: after_request(response))
     return response
 
-@app.route('/receive', methods=['POST'])
-def receive_data():
-    data = request.json
-    print("Data received:", data)
-    return jsonify({"message": "Data received successfully", "yourData": data}), 200
-
-@app.route('/receive_zip', methods=['POST'])
-def receive_zip():
-    print(request.files['file'])
-    if 'file' not in request.files:
-        return jsonify({"message": "No file part"}), 400
-
-    file = request.files['file']
-    print(file.filename)
-    if file.filename == '':
-        return jsonify({"message": "No selected file"}), 400
-
-    if file and file.filename.endswith('.zip'):
-        try:
-            # Make sure to get the correct file stream
-            # `file.stream` might not work properly directly, so use BytesIO
-            byte_stream = io.BytesIO(file.read())  # Read the file stream into a BytesIO buffer
-
-            # Now use the BytesIO object with zipfile
-            zip_file = zipfile.ZipFile(byte_stream, 'r')
-            print(zip_file.namelist())  # List contents of the zip to confirm successful opening
-
-            with zip_file.open('ro-crate-metadata.json') as f:
-                data = f.read()
-                print(json.loads(data))
-            
-            # Assuming there's a specific file you want to read from the zip
-            with zip_file.open('query.json') as f:
-                print(type(f))
-                data = f.read()
-                print(json.loads(data))  # Output the contents of the data.json file
-                OPENBIS_DATA.append(json.loads(data))
-
-            return jsonify({"message": "Zip file processed successfully"}), 200
-        except zipfile.BadZipFile:
-            return jsonify({"message": "Invalid zip file"}), 400
-    else:
-        return jsonify({"message": "Unsupported file type"}), 400
-
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    app.run(port=5002, debug=True)

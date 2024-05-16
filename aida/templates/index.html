@@ -3,120 +3,69 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>openBIS ELN/LIMS</title>
-
+    <title>AiiDA Workflow Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .hidden {
             display: none;
-        }
-        .btn-primary {
-            background-color: blueviolet;
-        }
-        .btn-success {
-            background-color: cadetblue;
         }
     </style>
 </head>
 
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
-    <header class="container d-flex align-items-center mb-4">
-        <img src="static/openBIS_Logo.png" alt="Logo" style="height: 50px; margin-right: 10px;">
-        <h1 class="mb-0"> Lab Notebook & Inventory Manager</h1>
-    </header>
     <hr>
-
-    <div class="container">
-        <div id="loading" class="text-center my-3" style="display: none;">Loading...</div>
-        <div id="error" class="alert alert-danger mt-3" style="display: none;"></div>
+    <div class="container mt-5">
         <div class="row">
-            <div class="col-12">
-                <h1 class="mb-4">OpenBIS Data Viewer</h1>
-                <div class="mb-3 d-flex align-items-center">
-                    <h4 class="me-3 mb-0">Ontology: </h4>
-                    <button onclick="fetchFilteredData()" class="btn btn-success">Filter</button>
-                    <select id="typeSelect" class="form-select me-2"></select>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-striped mt-3" id="dataTable">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Type</th>
-                                <th>Title</th>
-                                <th>Ontology</th>
-                                <th>Metadata</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Data rows will be appended here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="col-4">
-
-                <h1 class="mb-4">Connect to AiiDA</h1>
+            <div class="col-6">
+                <h1 class="mb-4">AiiDA Data Viewer</h1>
                 <div class="mb-3">
-                    <button onclick="fetchAIDAData()" class="btn btn-primary">Fetch AiiDA types</button>
-                </div>
-                <div id="aidatypes" class="mb-3">
-
-                    <div id="aiidaSteps" class="mb-3"></div>
-
+                    <button onclick="fetchData()" class="btn btn-primary">Fetch Data</button>
                 </div>
                 <div class="mb-3">
-                    <h2>Filter by AiiDA Type</h2>
-                    <select id="aidatypeSelect" class="form-select mb-3">
+                    <h2>Filter by Type</h2>
+                    <select id="typeSelect" class="form-select mb-3">
                         <option value="">Select a type</option>
                     </select>
-                    <button onclick="fetchFilteredAidaData()" class="btn btn-success">Fetch from AiiDA</button>
+                    <button onclick="fetchFilteredData()" class="btn btn-success">Fetch Filtered Data</button>
                 </div>
-                <ul id="aidadataList" class="list-group mt-3"></ul>
+                <ul id="dataList" class="list-group mt-3"></ul>
+            </div>
+            <div class="col-6">
+                <h1 class="mb-4">Connect to OpenBIS</h1>
+                <div class="mb-3">
+                    <button onclick="fetchOpenbisData()" class="btn btn-primary">Fetch OpenBIS types</button>
+                </div>
+                <div id="openbisTypes" class="mb-3"></div>
+                <div class="mb-3">
+                    <h2>Filter by OpenBIS Type</h2>
+                    <select id="openbisTypeSelect" class="form-select mb-3">
+                        <option value="">Select a type</option>
+                    </select>
+                    <button onclick="fetchFilteredOpenbisData()" class="btn btn-success">Fetch Filtered OpenBIS
+                        Data</button>
+                </div>
+                <ul id="openbisDataList" class="list-group mt-3"></ul>
             </div>
         </div>
+
     </div>
 
     <script>
-        function toggleLoading(isLoading) {
-            const loadingElement = document.getElementById('loading');
-            loadingElement.style.display = isLoading ? 'block' : 'none';
-        }
-
-        function handleError(message) {
-            const errorElement = document.getElementById('error');
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-            toggleLoading(false);
-        }
-
-        function hideError() {
-            const errorElement = document.getElementById('error');
-            errorElement.style.display = 'none';
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchData();
-        });
-
         function fetchData() {
-            toggleLoading(true);
             fetch('/data')
                 .then(response => response.json())
                 .then(data => {
-                    updateTable(data);
+                    updateList(data);
                     populateTypes(data);
-                    toggleLoading(false);
                 })
-                .catch(error => handleError('Failed to fetch data.'));
+                .catch(error => console.error('Error:', error));
         }
 
         function populateTypes(data) {
-            const types = new Set(data.map(item => item.ontology));
+            const types = new Set(data.map(item => item.type));
             const typeSelect = document.getElementById('typeSelect');
-            typeSelect.innerHTML = '<option value="all">All</option>';
+            typeSelect.innerHTML = '<option value="">Select a type</option>'; // Reset
             types.forEach(type => {
                 const option = document.createElement('option');
                 option.value = type;
@@ -126,46 +75,30 @@
         }
 
         function fetchFilteredData() {
-            const selectedType = document.getElementById('typeSelect').value;
+            var selectedType = document.getElementById('typeSelect').value;
             if (selectedType) {
-                toggleLoading(true);
                 fetch(`/data/filter?type=${encodeURIComponent(selectedType)}`)
                     .then(response => response.json())
-                    .then(data => {
-                        if (data.length > 0) {
-                            updateTable(data);
-                            hideError();
-                        } else {
-                            handleError('No data found for the selected type.');
-                        }
-                        toggleLoading(false);
-                    })
-                    .catch(error => handleError('Failed to fetch filtered data.'));
+                    .then(data => updateList(data))
+                    .catch(error => console.error('Error:', error));
             } else {
                 alert('Please select a type to filter by!');
             }
         }
 
-        function updateTable(data) {
-            const tableBody = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
-            tableBody.innerHTML = '';
+        function updateList(data) {
+            const list = document.getElementById('dataList');
+            list.innerHTML = ''; // Clear previous entries
             data.forEach(item => {
-                const row = tableBody.insertRow();
-                const cellId = row.insertCell(0);
-                const cellType = row.insertCell(1);
-                const cellTitle = row.insertCell(2);
-                const cellOnt = row.insertCell(3);
-                const cellMetadata = row.insertCell(4);
-                cellId.textContent = item.id;
-                cellType.textContent = item.type;
-                cellTitle.textContent = item.title;
-                cellOnt.textContent = item.ontology;
-                cellMetadata.textContent = JSON.stringify(item.metadata);
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = `ID: ${item.id}, Type: ${item.type}, Title: ${item.title}`;
+                list.appendChild(li);
             });
         }
 
-        function fetchAIDAData() {
-            fetch('http://localhost:5002/data/types', {
+        function fetchOpenbisData() {
+            fetch('http://localhost:5001/data/types', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/zip',
@@ -193,34 +126,34 @@
                     const data = JSON.parse(jsonString);
                     console.log(data);
                     // Optionally update the UI here to display the data
-                    const aidatypes = new Set(data);
-                    const aidatypeSelect = document.getElementById('aidatypeSelect');
-                    aidatypeSelect.innerHTML = '<option value="">Select a type</option>'; // Reset
-                    aidatypes.forEach(type => {
+                    const openbisTypes = new Set(data);
+                    const openbisTypeSelect = document.getElementById('openbisTypeSelect');
+                    openbisTypeSelect.innerHTML = '<option value="">Select a type</option>'; // Reset
+                    openbisTypes.forEach(type => {
                         console.log(type);
                         const option = document.createElement('option');
                         option.value = type;
                         option.textContent = type;
-                        aidatypeSelect.appendChild(option);
+                        openbisTypeSelect.appendChild(option);
                     });
                 })
                 .catch(error => console.error('Error:', error));
         }
 
-        function fetchFilteredAidaData() {
-            var selectedType = document.getElementById('aidatypeSelect').value;
+        function fetchFilteredOpenbisData() {
+            var selectedType = document.getElementById('openbisTypeSelect').value;
             if (selectedType) {
-                fetch(`http://localhost:5002/data/filter?type=${encodeURIComponent(selectedType)}`)
+                fetch(`http://localhost:5001/data/filter?type=${encodeURIComponent(selectedType)}`)
                     .then(response => response.json())
-                    .then(data => updateAidaList(data))
+                    .then(data => updateOpenbisList(data))
                     .catch(error => console.error('Error:', error));
             } else {
                 alert('Please select a type to filter by!');
             }
         }
 
-        function updateAidaList(data) {
-            const list = document.getElementById('aidadataList');
+        function updateOpenbisList(data) {
+            const list = document.getElementById('openbisDataList');
             list.innerHTML = ''; // Clear previous entries
             data.forEach(item => {
                 const li = document.createElement('li');
@@ -229,7 +162,6 @@
                 list.appendChild(li);
             });
         }
-
     </script>
 
     <hr>
@@ -302,9 +234,7 @@
                 .catch(error => console.error('Error:', error));
         }
     </script>
-
     <hr>
-
     <div class="container mt-5">
         <h1 class="mb-4">Upload RO-Crate Zip File</h1>
         <form id="uploadForm1" class="mb-4">
