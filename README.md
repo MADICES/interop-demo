@@ -11,7 +11,8 @@ This Python application is built using Flask to handle file uploads and work wit
 - Python 3.x
 - Flask
 - Flask-CORS
-- ro-crate-py
+- rocrate
+
 
 ## Installation
 
@@ -21,7 +22,7 @@ This Python application is built using Flask to handle file uploads and work wit
 
 3. Install the required Python packages using pip:
    ```bash
-   pip install Flask Flask-CORS ro-crate-py
+   pip install Flask Flask-CORS rocrate
    ```
 
 ## Configuration
