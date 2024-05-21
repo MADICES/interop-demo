@@ -95,7 +95,7 @@ def get_all_data():
 @app.route("/data/reset", methods=["GET"])
 def reset_data():
     global AIIDA_DATA
-    AIIDA_DATA = AIIDA_DATA_COPY.copy()
+    AIIDA_DATA = deepcopy(AIIDA_DATA_COPY)
     return jsonify({"message": "Data imported successfully."}), 200
 
 

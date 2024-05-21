@@ -46,6 +46,7 @@
           </select>
           <button
             onclick="fetchPlatformTypes()"
+            id="connectButton"
             class="btn btn-primary form-button"
             disabled
           >
@@ -53,7 +54,7 @@
           </button>
         </div>
         <div id="portSteps" class="mb-3"></div>
-        <div id="filterSection" class="mb-3 d-none align-items-center">
+        <div id="filterSection" class="mb-3 d-flex d-none align-items-center">
           <div class="form-label">
             <label>Ontology:</label>
           </div>
@@ -66,6 +67,7 @@
           </select>
           <button
             onclick="fetchPlatformData()"
+            id="fetchButton"
             class="btn btn-success form-button"
             disabled
           >
@@ -87,7 +89,7 @@
       <div class="col-12">
         <h1 class="mb-4">Data Viewer</h1>
         <div class="mb-3 d-flex align-items-center">
-          <label class="fs-4 me-3 form-label">Ontology:</label>
+          <label class="form-label">Ontology:</label>
           <select
             id="typeSelect"
             class="form-select me-2"
@@ -122,9 +124,12 @@
       <h1 class="mb-4">Run Simulations</h1>
       <div class="col-12">
         <div class="mb-3 d-flex align-items-center">
-          <label class="fs-4 me-3">Samples:</label>
+          <label class="form-label">Samples:</label>
           <select id="sampleSelect" class="form-select me-2"></select>
-          <button onclick="startSimulation()" class="btn btn-success ms-2">
+          <button
+            onclick="startSimulation()"
+            class="btn btn-success form-button"
+          >
             Submit
           </button>
         </div>
@@ -134,7 +139,7 @@
 
     <hr />
 
-    <div id="crateViewer" class="container mt-5">
+    <div id="crateViewer" class="container">
       <div class="col-12">
         <h1 class="mb-4">RO-Crate Viewer</h1>
         <form id="uploadForm1" class="mb-4">
@@ -168,10 +173,10 @@
         .getElementById("platformSelect")
         .addEventListener("change", () => {
           const selectedPlatform = platformSelect.value;
-          const connectButton = platformSelect.nextElementSibling;
+          const connectButton = document.getElementById("connectButton");
           connectButton.disabled = !selectedPlatform;
           if (!selectedPlatform) {
-            toggleFilterSection();
+            hideFilterSection();
             updatePlatformDataList([]);
           }
         });
@@ -180,7 +185,7 @@
         .getElementById("platformTypeSelect")
         .addEventListener("change", () => {
           const selectedType = platformTypeSelect.value;
-          const fetchButton = platformTypeSelect.nextElementSibling;
+          const fetchButton = document.getElementById("fetchButton");
           fetchButton.disabled = !selectedType;
           if (!selectedType) {
             updatePlatformDataList([]);
@@ -322,7 +327,7 @@
           .then((jsonString) => {
             const data = JSON.parse(jsonString);
             updateTypeSelection(data);
-            toggleFilterSection();
+            showFilterSection();
           })
           .catch((error) => {
             handleError("Failed to fetch or process data.");
@@ -330,12 +335,12 @@
       }
 
       function updateTypeSelection(data) {
-        const openbisTypes = new Set(data);
+        const types = new Set(data);
         const platformTypeSelect =
           document.getElementById("platformTypeSelect");
         platformTypeSelect.innerHTML =
           '<option value="">Select a type</option>';
-        openbisTypes.forEach((type) => {
+        types.forEach((type) => {
           const option = document.createElement("option");
           option.value = type;
           option.textContent = type;
@@ -412,15 +417,14 @@
         });
       }
 
-      function toggleFilterSection() {
+      function showFilterSection() {
         const filterSection = document.getElementById("filterSection");
-        if (filterSection.classList.contains("d-none")) {
-          filterSection.classList.remove("d-none");
-          filterSection.classList.add("d-flex");
-        } else {
-          filterSection.classList.remove("d-flex");
-          filterSection.classList.add("d-none");
-        }
+        filterSection.classList.remove("d-none");
+      }
+
+      function hideFilterSection() {
+        const filterSection = document.getElementById("filterSection");
+        filterSection.classList.add("d-none");
       }
     </script>
 
@@ -466,7 +470,10 @@
               throw new Error("Failed to start simulation.");
             }
           })
-          .then((response) => displayNewObject(response))
+          .then((response) => {
+            fetchData();
+            displayNewObject(response);
+          })
           .catch((error) => {
             handleError("Failed to fetch or process data.");
           });
@@ -479,14 +486,13 @@
           "Updated Object with new simulation: " +
           JSON.stringify(newObject, null, 2);
 
-        // Create the Export to openBIS button if it does not exist
-        let exportButton = document.getElementById("exportToOpenBIS");
+        let exportButton = document.getElementById("exportButton");
         if (!exportButton) {
           exportButton = document.createElement("button");
-          exportButton.id = "exportToOpenBIS";
-          exportButton.textContent = "Export to openBIS";
+          exportButton.id = "exportButton";
+          exportButton.textContent = "Export Data";
           exportButton.className = "btn btn-success mt-3";
-          exportButton.onclick = () => exportToOpenBIS(newObject);
+          exportButton.onclick = () => exportData(newObject);
           displayArea.parentNode.insertBefore(
             exportButton,
             displayArea.nextSibling
@@ -494,7 +500,7 @@
         }
       }
 
-      function exportToOpenBIS(newObject) {
+      function exportData(newObject) {
         fetch("/api/export", {
           method: "POST",
           headers: {
@@ -506,13 +512,13 @@
             if (response.ok) {
               return response.json();
             } else {
-              throw new Error("Failed to export to openBIS.");
+              throw new Error("Failed to export data.");
             }
           })
-          .then((data) => alert("Successfully exported to openBIS."))
+          .then((data) => alert("Successfully exported data."))
           .catch((error) => {
             console.error("Error:", error);
-            alert("An error occurred during the export to openBIS.");
+            alert("An error occurred during data export.");
           });
       }
     </script>

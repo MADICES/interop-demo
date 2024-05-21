@@ -48,15 +48,15 @@ OPENBIS_DATA = [
     },
     {
         "id": "20240402011823235-1280",
-        "type": "@openBIS.Object",
+        "type": "@openBIS.Sample",
         "title": "Protein",
         "metadata": {"hasBioPolymerSequence": "AAACCTTTGTACAATG"},
         "ontology": "@https://schema.org/Protein",
     },
     {
         "id": "20240402011823235-1289",
-        "type": "@openBIS.Object",
-        "title": "Molecul",
+        "type": "@openBIS.Sample",
+        "title": "Molecule",
         "metadata": {
             "inChIKey": "MTHN",
             "iupacName": "Methane",
@@ -67,10 +67,19 @@ OPENBIS_DATA = [
     },
 ]
 
+RDM_PLATFORMS = [
+    "AiiDA",
+]
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/platforms", methods=["GET"])
+def get_all_platforms():
+    return jsonify(RDM_PLATFORMS)
 
 
 @app.route("/data", methods=["GET"])

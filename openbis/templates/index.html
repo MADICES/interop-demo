@@ -19,6 +19,13 @@
       .btn-success {
         background-color: cadetblue;
       }
+      .form-label {
+        width: 140px;
+        font-size: larger;
+      }
+      .form-button {
+        width: 100px;
+      }
     </style>
   </head>
 
@@ -36,10 +43,47 @@
 
     <hr />
 
-    <div class="container">
-      <div id="loading" class="text-center my-3" style="display: none">
-        Loading...
+    <div id="cratePort" class="container">
+      <div class="col-12">
+        <h1 class="mb-4">Crate Port</h1>
+        <div id="platformSection" class="mb-3 d-flex align-items-center">
+          <div class="form-label">
+            <label>Platform:</label>
+          </div>
+          <select
+            name="platformSelect"
+            id="platformSelect"
+            class="form-select me-2"
+          >
+            <option value="">Select a platform</option>
+          </select>
+          <button
+            onclick="fetchPlatformTypes()"
+            class="btn btn-primary form-button"
+            disabled
+          >
+            Connect
+          </button>
+        </div>
+        <div id="aiidatypes" class="mb-3">
+          <div id="aiidaSteps" class="mb-3"></div>
+        </div>
+        <div class="mb-3">
+          <h2>Filter by AiiDA Type</h2>
+          <select id="aiidatypeSelect" class="form-select mb-3">
+            <option value="">Select a type</option>
+          </select>
+          <button onclick="fetchFilteredAiiDAData()" class="btn btn-success">
+            Fetch from AiiDA
+          </button>
+        </div>
+        <ul id="aiidadataList" class="list-group mt-3"></ul>
       </div>
+    </div>
+
+    <hr />
+
+    <div id="dataViewer" class="container">
       <div
         id="error"
         class="alert alert-danger mt-3"
@@ -78,41 +122,77 @@
 
     <hr />
 
-    <div class="container">
-      <div class="col-4">
-        <h1 class="mb-4">Crate Port</h1>
-        <div class="mb-3">
-          <button onclick="fetchAiiDAData()" class="btn btn-primary">
-            Fetch AiiDA types
-          </button>
-        </div>
-        <div id="aiidatypes" class="mb-3">
-          <div id="aiidaSteps" class="mb-3"></div>
-        </div>
-        <div class="mb-3">
-          <h2>Filter by AiiDA Type</h2>
-          <select id="aiidatypeSelect" class="form-select mb-3">
-            <option value="">Select a type</option>
-          </select>
-          <button onclick="fetchFilteredAiiDAData()" class="btn btn-success">
-            Fetch from AiiDA
-          </button>
-        </div>
-        <ul id="aiidadataList" class="list-group mt-3"></ul>
-      </div>
+    <div id="crateViewer" class="container">
+      <h1 class="mb-4">RO-Crate Viewer</h1>
+      <form id="uploadForm1" class="mb-4">
+        <input
+          type="file"
+          id="fileInput1"
+          accept=".zip"
+          class="form-control mb-2"
+        />
+        <button type="button" onclick="uploadRocrate()" class="btn btn-primary">
+          Upload
+        </button>
+      </form>
+      <h2>Results:</h2>
+      <pre id="result1" class="bg-light p-3 border"></pre>
     </div>
 
+    <!-- event listeners -->
     <script>
-      function toggleLoading(isLoading) {
-        const loadingElement = document.getElementById("loading");
-        loadingElement.style.display = isLoading ? "block" : "none";
+      document.addEventListener("DOMContentLoaded", () => {
+        fetchPlatforms();
+        fetchData();
+      });
+
+      document
+        .getElementById("platformSelect")
+        .addEventListener("change", () => {
+          const selectedPlatform = platformSelect.value;
+          const connectButton = platformSelect.nextElementSibling;
+          connectButton.disabled = !selectedPlatform;
+          if (!selectedPlatform) {
+            toggleFilterSection();
+            updatePlatformDataList([]);
+          }
+        });
+
+      document
+        .getElementById("platformTypeSelect")
+        .addEventListener("change", () => {
+          const selectedType = platformTypeSelect.value;
+          const fetchButton = platformTypeSelect.nextElementSibling;
+          fetchButton.disabled = !selectedType;
+          if (!selectedType) {
+            updatePlatformDataList([]);
+          }
+        });
+    </script>
+
+    <script>
+      function fetchPlatforms() {
+        fetch("/platforms")
+          .then((response) => response.json())
+          .then((data) => {
+            const platformSelect = document.getElementById("platformSelect");
+            data.forEach((platform) => {
+              const option = document.createElement("option");
+              option.value = platform;
+              option.textContent = platform;
+              platformSelect.appendChild(option);
+            });
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Failed to fetch RDM platforms.");
+          });
       }
 
       function handleError(message) {
         const errorElement = document.getElementById("error");
         errorElement.textContent = message;
         errorElement.style.display = "block";
-        toggleLoading(false);
       }
 
       function hideError() {
@@ -125,13 +205,11 @@
       });
 
       function fetchData() {
-        toggleLoading(true);
         fetch("/data")
           .then((response) => response.json())
           .then((data) => {
             updateTable(data);
             populateTypes(data);
-            toggleLoading(false);
           })
           .catch((error) => handleError("Failed to fetch data."));
       }
@@ -151,7 +229,6 @@
       function fetchFilteredData() {
         const selectedType = document.getElementById("typeSelect").value;
         if (selectedType) {
-          toggleLoading(true);
           fetch(`/data/filter?type=${encodeURIComponent(selectedType)}`)
             .then((response) => response.json())
             .then((data) => {
@@ -161,7 +238,6 @@
               } else {
                 handleError("No data found for the selected type.");
               }
-              toggleLoading(false);
             })
             .catch((error) => handleError("Failed to fetch filtered data."));
         } else {
@@ -260,25 +336,6 @@
         });
       }
     </script>
-
-    <hr />
-
-    <div class="container mt-5">
-      <h1 class="mb-4">RO-Crate Viewer</h1>
-      <form id="uploadForm1" class="mb-4">
-        <input
-          type="file"
-          id="fileInput1"
-          accept=".zip"
-          class="form-control mb-2"
-        />
-        <button type="button" onclick="uploadRocrate()" class="btn btn-primary">
-          Upload
-        </button>
-      </form>
-      <h2>Results:</h2>
-      <pre id="result1" class="bg-light p-3 border"></pre>
-    </div>
 
     <script>
       function uploadRocrate() {
