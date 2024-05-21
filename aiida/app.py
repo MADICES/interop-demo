@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import time
 import zipfile
+from copy import deepcopy
 
 import requests
 from flask import Flask, jsonify, render_template, request, send_file
@@ -49,7 +50,7 @@ AIIDA_DATA = [
     },
     {
         "id": "M-89",
-        "type": "@aiida.Object",
+        "type": "@aiida.Sample",
         "title": "Crystal",
         "metadata": {
             "inChIKey": "ETHNL",
@@ -61,14 +62,14 @@ AIIDA_DATA = [
     },
     {
         "id": "TPMS",
-        "type": "@aiida.Object",
+        "type": "@aiida.Sample",
         "title": "Tropomyosin",
         "metadata": {"hasBioPolymerSequence": "GGGTTCTCTATCTCTAAAAGGTGTCAA"},
         "ontology": "@https://schema.org/Protein",
     },
 ]
 
-AIIDA_DATA_COPY = AIIDA_DATA.copy()
+AIIDA_DATA_COPY = deepcopy(AIIDA_DATA)
 
 
 RDM_PLATFORMS = [
@@ -104,7 +105,7 @@ def import_data():
         new_data = request.json
         # Check if item with the same ID already exists
         if any(item["id"] == new_data["id"] for item in AIIDA_DATA):
-            return jsonify({"message": "Item with this ID already exists."}), 400
+            return jsonify({"message": "Item with this ID already exists."}), 409
         # Add new data to the list
         AIIDA_DATA.append(new_data)
         return jsonify({"message": "Data imported successfully."}), 200

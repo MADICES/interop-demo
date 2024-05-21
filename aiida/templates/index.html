@@ -11,11 +11,11 @@
       .hidden {
         display: none;
       }
-      .port-label {
+      .form-label {
         width: 140px;
         font-size: larger;
       }
-      .port-button {
+      .form-button {
         width: 100px;
       }
     </style>
@@ -34,7 +34,7 @@
       <div class="col-12">
         <h1 class="mb-4">Crate Port</h1>
         <div id="platformSection" class="mb-3 d-flex align-items-center">
-          <div class="port-label">
+          <div class="form-label">
             <label>Platform:</label>
           </div>
           <select
@@ -46,7 +46,7 @@
           </select>
           <button
             onclick="fetchPlatformTypes()"
-            class="btn btn-primary port-button"
+            class="btn btn-primary form-button"
             disabled
           >
             Connect
@@ -54,7 +54,7 @@
         </div>
         <div id="portSteps" class="mb-3"></div>
         <div id="filterSection" class="mb-3 d-none align-items-center">
-          <div class="port-label">
+          <div class="form-label">
             <label>Ontology:</label>
           </div>
           <select
@@ -66,7 +66,7 @@
           </select>
           <button
             onclick="fetchPlatformData()"
-            class="btn btn-success port-button"
+            class="btn btn-success form-button"
             disabled
           >
             Fetch
@@ -87,17 +87,13 @@
       <div class="col-12">
         <h1 class="mb-4">Data Viewer</h1>
         <div class="mb-3 d-flex align-items-center">
-          <label class="fs-4 me-3">Ontology:</label>
+          <label class="fs-4 me-3 form-label">Ontology:</label>
           <select
             id="typeSelect"
             class="form-select me-2"
             onChange="fetchFilteredData()"
           ></select>
-          <button
-            onclick="resetData()"
-            class="btn btn-danger"
-            style="margin-left: 10px"
-          >
+          <button onclick="resetData()" class="btn btn-danger form-button">
             Reset
           </button>
         </div>
@@ -125,13 +121,11 @@
     <div id="simulations" class="container">
       <h1 class="mb-4">Run Simulations</h1>
       <div class="col-12">
-        <h3>Select an Object</h3>
-        <div class="mt-4 d-flex align-items-center">
-          <select id="objectSelect" class="form-select mb-3">
-            <option value="">Select an Object</option>
-          </select>
-          <button onclick="startSimulation()" class="btn btn-warning">
-            Start Simulation
+        <div class="mb-3 d-flex align-items-center">
+          <label class="fs-4 me-3">Samples:</label>
+          <select id="sampleSelect" class="form-select me-2"></select>
+          <button onclick="startSimulation()" class="btn btn-success ms-2">
+            Submit
           </button>
         </div>
       </div>
@@ -163,6 +157,7 @@
       </div>
     </div>
 
+    <!-- event listeners -->
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         fetchPlatforms();
@@ -187,8 +182,14 @@
           const selectedType = platformTypeSelect.value;
           const fetchButton = platformTypeSelect.nextElementSibling;
           fetchButton.disabled = !selectedType;
+          if (!selectedType) {
+            updatePlatformDataList([]);
+          }
         });
+    </script>
 
+    <!-- data functions -->
+    <script>
       function resetData() {
         fetch("/data/reset").then(
           () => {
@@ -242,7 +243,11 @@
       function populateTypes(data) {
         const types = new Set(data.map((item) => item.type));
         const typeSelect = document.getElementById("typeSelect");
-        typeSelect.innerHTML = '<option value="">All</option>';
+        typeSelect.innerHTML = "";
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "All";
+        typeSelect.appendChild(option);
         types.forEach((type) => {
           const option = document.createElement("option");
           option.value = type;
@@ -291,8 +296,6 @@
       }
 
       function fetchPlatformTypes() {
-        // updateSteps("Fetching data from openBIS...");
-
         fetch("http://localhost:5001/data/types", {
           method: "GET",
           headers: {
@@ -301,7 +304,6 @@
         })
           .then((response) => {
             if (response.ok) {
-              // updateSteps("Data fetched successfully. Unzipping file...");
               return response.blob();
             }
             throw new Error("Network response was not ok.");
@@ -311,8 +313,6 @@
             return jsZip.loadAsync(blob);
           })
           .then((zip) => {
-            // updateSteps("Zip file unzipped. Listing files...");
-            // updateSteps(JSON.stringify(Object.keys(zip.files)));
             const filename = "response.json";
             if (filename in zip.files) {
               return zip.files[filename].async("string");
@@ -320,15 +320,12 @@
             throw new Error("File not found in zip");
           })
           .then((jsonString) => {
-            // updateSteps("JSON extracted. Parsing data...");
             const data = JSON.parse(jsonString);
             updateTypeSelection(data);
-            // updateSteps("Data parsed and UI updated.");
             toggleFilterSection();
           })
           .catch((error) => {
             handleError("Failed to fetch or process data.");
-            // updateSteps("Error occurred.");
           });
       }
 
@@ -350,7 +347,6 @@
         const selectedType =
           document.getElementById("platformTypeSelect").value;
         if (selectedType) {
-          // updateSteps("Fetching filtered data for type: " + selectedType);
           fetch(
             `http://localhost:5001/data/filter?type=${encodeURIComponent(
               selectedType
@@ -359,11 +355,9 @@
             .then((response) => response.json())
             .then((data) => {
               updatePlatformDataList(data);
-              // updateSteps("Filtered data fetched and displayed.");
             })
             .catch((error) => {
               handleError("Failed to fetch filtered data.");
-              // updateSteps("Error occurred while fetching filtered data.");
             });
         } else {
           alert("Please select a type to filter by!");
@@ -382,7 +376,9 @@
             if (response.ok) {
               fetchData();
             } else {
-              throw new Error("Failed to import data.");
+              response.json().then((data) => {
+                alert(data.message);
+              });
             }
           })
           .catch((error) => {
@@ -416,13 +412,6 @@
         });
       }
 
-      function updateSteps(message) {
-        const stepsElement = document.getElementById("portSteps");
-        const step = document.createElement("div");
-        step.textContent = message;
-        stepsElement.appendChild(step);
-      }
-
       function toggleFilterSection() {
         const filterSection = document.getElementById("filterSection");
         if (filterSection.classList.contains("d-none")) {
@@ -435,25 +424,26 @@
       }
     </script>
 
+    <!-- simulation functions -->
     <script>
-      // Function to start the simulation process
       function populateSelectSimulation(data) {
-        const objectsList = data.filter(
-          (item) =>
-            item.type !== "@aiida.Simulation" && item.type !== "@aiida.Workflow"
-        );
-        const objectSelect = document.getElementById("objectSelect");
-        objectSelect.innerHTML = '<option value="">Select an Object</option>';
-        objectsList.forEach((item) => {
+        const samplesList = data.filter((item) => item.type.includes("Sample"));
+        const sampleSelect = document.getElementById("sampleSelect");
+        sampleSelect.innerHTML = "";
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Select a sample";
+        sampleSelect.appendChild(option);
+        samplesList.forEach((item) => {
           const option = document.createElement("option");
           option.value = item.id; // Store item as a string in the value
           option.textContent = item.id + " - " + item.title;
-          objectSelect.appendChild(option);
+          sampleSelect.appendChild(option);
         });
       }
 
       function startSimulation() {
-        const selectedObjectId = document.getElementById("objectSelect").value;
+        const selectedObjectId = document.getElementById("sampleSelect").value;
 
         if (!selectedObjectId) {
           alert("Please select an object to link with the simulation.");
@@ -504,7 +494,6 @@
         }
       }
 
-      // Function to create an RO-Crate and send it to another application
       function exportToOpenBIS(newObject) {
         fetch("/api/export", {
           method: "POST",
@@ -528,6 +517,7 @@
       }
     </script>
 
+    <!-- crate functions -->
     <script>
       function uploadRocrate() {
         const formData = new FormData();
