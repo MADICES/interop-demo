@@ -30,10 +30,55 @@
 
     <hr />
 
-    <div class="container">
-      <div id="loading" class="text-center my-3" style="display: none">
-        Loading...
+    <div id="cratePort" class="container">
+      <div class="col-12">
+        <h1 class="mb-4">Crate Port</h1>
+        <div id="platformSection" class="mb-3 d-flex align-items-center">
+          <div class="port-label">
+            <label>Platform:</label>
+          </div>
+          <select
+            name="platformSelect"
+            id="platformSelect"
+            class="form-select me-2"
+          >
+            <option value="">Select a platform</option>
+          </select>
+          <button
+            onclick="fetchPlatformTypes()"
+            class="btn btn-primary port-button"
+            disabled
+          >
+            Connect
+          </button>
+        </div>
+        <div id="portSteps" class="mb-3"></div>
+        <div id="filterSection" class="mb-3 d-none align-items-center">
+          <div class="port-label">
+            <label>Ontology:</label>
+          </div>
+          <select
+            name="platformTypeSelect"
+            id="platformTypeSelect"
+            class="form-select me-2"
+          >
+            <option value="">Select a type</option>
+          </select>
+          <button
+            onclick="fetchPlatformData()"
+            class="btn btn-success port-button"
+            disabled
+          >
+            Fetch
+          </button>
+        </div>
+        <ul id="platformDataList" class="list-group mt-3"></ul>
       </div>
+    </div>
+
+    <hr />
+
+    <div id="dataViewer" class="container">
       <div
         id="error"
         class="alert alert-danger mt-3"
@@ -77,49 +122,44 @@
 
     <hr />
 
-    <div class="container">
+    <div id="simulations" class="container">
+      <h1 class="mb-4">Run Simulations</h1>
       <div class="col-12">
-        <h1 class="mb-4">Crate Port</h1>
-        <div id="platformSection" class="mb-3 d-flex align-items-center">
-          <div class="port-label">
-            <label>Platform:</label>
-          </div>
-          <select
-            name="platformSelect"
-            id="platformSelect"
-            class="form-select me-2"
-          >
-            <option value="">Select a platform</option>
+        <h3>Select an Object</h3>
+        <div class="mt-4 d-flex align-items-center">
+          <select id="objectSelect" class="form-select mb-3">
+            <option value="">Select an Object</option>
           </select>
-          <button
-            onclick="fetchPlatformTypes()"
-            class="btn btn-primary port-button"
-            disabled
-          >
-            Connect
+          <button onclick="startSimulation()" class="btn btn-warning">
+            Start Simulation
           </button>
         </div>
-        <div id="portSteps" class="mb-3"></div>
-        <div id="filterSection" class="mb-3 d-none align-items-center">
-          <div class="port-label">
-            <label>Ontology:</label>
-          </div>
-          <select
-            name="platformTypeSelect"
-            id="platformTypeSelect"
-            class="form-select me-2"
-          >
-            <option value="">Select a type</option>
-          </select>
+      </div>
+      <div id="sim_message" class="alert alert-success d-none"></div>
+    </div>
+
+    <hr />
+
+    <div id="crateViewer" class="container mt-5">
+      <div class="col-12">
+        <h1 class="mb-4">RO-Crate Viewer</h1>
+        <form id="uploadForm1" class="mb-4">
+          <input
+            type="file"
+            id="fileInput1"
+            accept=".zip"
+            class="form-control mb-2"
+          />
           <button
-            onclick="fetchPlatformData()"
-            class="btn btn-success port-button"
-            disabled
+            type="button"
+            onclick="uploadRocrate()"
+            class="btn btn-primary"
           >
-            Fetch
+            Upload
           </button>
-        </div>
-        <ul id="platformDataList" class="list-group mt-3"></ul>
+        </form>
+        <h2>Results:</h2>
+        <pre id="result1" class="bg-light p-3 border"></pre>
       </div>
     </div>
 
@@ -395,24 +435,6 @@
       }
     </script>
 
-    <hr />
-
-    <div class="container">
-      <h1 class="mb-4">Run Simulations</h1>
-      <div class="col-12">
-        <h3>Select an Object</h3>
-        <div class="mt-4 d-flex align-items-center">
-          <select id="objectSelect" class="form-select mb-3">
-            <option value="">Select an Object</option>
-          </select>
-          <button onclick="startSimulation()" class="btn btn-warning">
-            Start Simulation
-          </button>
-        </div>
-      </div>
-      <div id="sim_message" class="alert alert-success d-none"></div>
-    </div>
-
     <script>
       // Function to start the simulation process
       function populateSelectSimulation(data) {
@@ -505,31 +527,6 @@
           });
       }
     </script>
-
-    <hr />
-
-    <div class="container mt-5">
-      <div class="col-12">
-        <h1 class="mb-4">RO-Crate Viewer</h1>
-        <form id="uploadForm1" class="mb-4">
-          <input
-            type="file"
-            id="fileInput1"
-            accept=".zip"
-            class="form-control mb-2"
-          />
-          <button
-            type="button"
-            onclick="uploadRocrate()"
-            class="btn btn-primary"
-          >
-            Upload
-          </button>
-        </form>
-        <h2>Results:</h2>
-        <pre id="result1" class="bg-light p-3 border"></pre>
-      </div>
-    </div>
 
     <script>
       function uploadRocrate() {
