@@ -177,16 +177,10 @@
           });
       }
 
-      function toggleLoading(isLoading) {
-        const loadingElement = document.getElementById("loading");
-        loadingElement.style.display = isLoading ? "block" : "none";
-      }
-
       function handleError(message) {
         const errorElement = document.getElementById("error");
         errorElement.textContent = message;
         errorElement.style.display = "block";
-        toggleLoading(false);
       }
 
       function hideError() {
@@ -195,14 +189,12 @@
       }
 
       function fetchData() {
-        toggleLoading(true);
         fetch("/data")
           .then((response) => response.json())
           .then((data) => {
             updateList(data);
             populateTypes(data);
             populateSelectSimulation(data);
-            toggleLoading(false);
           })
           .catch((error) => handleError("Failed to fetch data."));
       }
@@ -222,7 +214,6 @@
       function fetchFilteredData() {
         const selectedType = document.getElementById("typeSelect").value;
         if (selectedType) {
-          toggleLoading(true);
           fetch(`/data/filter?type=${encodeURIComponent(selectedType)}`)
             .then((response) => response.json())
             .then((data) => {
@@ -232,7 +223,6 @@
               } else {
                 handleError("No data found for the selected type.");
               }
-              toggleLoading(false);
             })
             .catch((error) => handleError("Failed to fetch filtered data."));
         } else {
@@ -261,7 +251,6 @@
       }
 
       function fetchPlatformTypes() {
-        toggleLoading(true);
         // updateSteps("Fetching data from openBIS...");
 
         fetch("http://localhost:5001/data/types", {
@@ -295,7 +284,6 @@
             const data = JSON.parse(jsonString);
             updateTypeSelection(data);
             // updateSteps("Data parsed and UI updated.");
-            toggleLoading(false);
             toggleFilterSection();
           })
           .catch((error) => {
@@ -322,7 +310,6 @@
         const selectedType =
           document.getElementById("platformTypeSelect").value;
         if (selectedType) {
-          toggleLoading(true);
           // updateSteps("Fetching filtered data for type: " + selectedType);
           fetch(
             `http://localhost:5001/data/filter?type=${encodeURIComponent(
@@ -333,7 +320,6 @@
             .then((data) => {
               updatePlatformDataList(data);
               // updateSteps("Filtered data fetched and displayed.");
-              toggleLoading(false);
             })
             .catch((error) => {
               handleError("Failed to fetch filtered data.");
