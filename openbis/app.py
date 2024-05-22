@@ -27,7 +27,7 @@ app.config["RO_CRATE_FOLDER"] = "ro_crate/"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # Limit to 16MB
 app.config["SHARED_PATH"] = "../shared"
 
-OPENBIS_DATA = [
+DATA = [
     {
         "id": "20240424084127547-750",
         "type": "@openBIS.Dataset",
@@ -77,7 +77,7 @@ OPENBIS_DATA = [
     },
 ]
 
-OPENBIS_DATA_COPY = deepcopy(OPENBIS_DATA)
+DATA_COPY = deepcopy(DATA)
 
 RDM_PLATFORMS = [
     "AiiDA",
@@ -100,34 +100,13 @@ def serve_shared_content(path):
 
 
 @app.route("/platforms", methods=["GET"])
-def get_all_platforms():
+def get_platforms():
     return jsonify(RDM_PLATFORMS)
 
 
 @app.route("/data", methods=["GET"])
-def get_all_data():
-    return jsonify(OPENBIS_DATA)
-
-
-@app.route("/data/reset", methods=["GET"])
-def reset_data():
-    global OPENBIS_DATA
-    OPENBIS_DATA = deepcopy(OPENBIS_DATA_COPY)
-    return jsonify({"message": "Data imported successfully."}), 200
-
-
-@app.route("/data/import", methods=["POST"])
-def import_data():
-    try:
-        new_data = request.json
-        # Check if item with the same ID already exists
-        if any(item["id"] == new_data["id"] for item in OPENBIS_DATA):
-            return jsonify({"message": "Item with this ID already exists."}), 409
-        # Add new data to the list
-        OPENBIS_DATA.append(new_data)
-        return jsonify({"message": "Data imported successfully."}), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
+def get_data():
+    return jsonify(DATA)
 
 
 @app.route("/data/filter", methods=["GET"])
@@ -136,30 +115,34 @@ def filter_data():
     if not filter_type:
         return "Type parameter is required for filtering.", 400
     filtered_data = [
-        item for item in OPENBIS_DATA if item["type"].lower() == filter_type.lower()
+        item for item in DATA if item["type"].lower() == filter_type.lower()
     ]
     return jsonify(filtered_data)
 
 
-def extract_and_read_rocrate(file_path):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Unzip the file
-        with zipfile.ZipFile(file_path, "r") as zip_ref:
-            zip_ref.extractall(temp_dir)
+@app.route("/data/import", methods=["POST"])
+def import_data():
+    try:
+        new_data = request.json
+        # Check if item with the same ID already exists
+        if any(item["id"] == new_data["id"] for item in DATA):
+            return jsonify({"message": "Item with this ID already exists."}), 409
+        # Add new data to the list
+        DATA.append(new_data)
+        return jsonify({"message": "Data imported successfully."}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
-        # Process the unzipped directory
-        crate = ROCrate(temp_dir)
-        for entity in crate.get_entities():
-            print(entity)
-            if entity["@type"] == "RESPONSE":
-                response_file_path = os.path.join(temp_dir, entity["@id"])
-                with open(response_file_path, "r") as file:
-                    return json.load(file)
-        return None
+
+@app.route("/data/reset", methods=["GET"])
+def reset_data():
+    global DATA
+    DATA = deepcopy(DATA_COPY)
+    return jsonify({"message": "Data imported successfully."}), 200
 
 
 @app.route("/data/types", methods=["GET"])
-def get_all_types():
+def get_types():
     temp_dir = app.config["UPLOAD_FOLDER"]
     # Create a new RO-Crate in the temporary directory
     crate = ROCrate()
@@ -167,7 +150,7 @@ def get_all_types():
     # Create the JSON content
     response_file_path = os.path.join(temp_dir, "response.json")
     with open(response_file_path, "w") as f:
-        json.dump([item["ontology"] for item in OPENBIS_DATA], f, indent=4)
+        json.dump([item["ontology"] for item in DATA], f, indent=4)
 
     # Add the JSON file to the crate
     crate.add_file(
@@ -182,6 +165,17 @@ def get_all_types():
     return send_file(
         "temp_uploads/ro_crate.zip", as_attachment=True, download_name="ro_crate.zip"
     )
+
+
+@app.route("/data/ontology", methods=["GET"])
+def get_objects_by_ontological_type():
+    filter_type = request.args.get("type")
+    if not filter_type:
+        return "Missing ontological type.", 400
+    filtered_data = [
+        item for item in DATA if item["ontology"].lower() == filter_type.lower()
+    ]
+    return jsonify(filtered_data)
 
 
 @app.route("/upload_rocrate", methods=["POST"])
@@ -205,6 +199,23 @@ def upload_rocrate():
                     "message": "No RESPONSE type file found in the RO-Crate or failed to read."
                 }
             )
+
+
+def extract_and_read_rocrate(file_path):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Unzip the file
+        with zipfile.ZipFile(file_path, "r") as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        # Process the unzipped directory
+        crate = ROCrate(temp_dir)
+        for entity in crate.get_entities():
+            print(entity)
+            if entity["@type"] == "RESPONSE":
+                response_file_path = os.path.join(temp_dir, entity["@id"])
+                with open(response_file_path, "r") as file:
+                    return json.load(file)
+        return None
 
 
 @app.route("/files", methods=["GET"])
@@ -348,7 +359,7 @@ def receive_zip():
                 print(json.loads(data))  # Output the contents of the data.json file
                 json_data = json.loads(data)
                 _id = json_data["id"]
-                [*filter(lambda d: d["id"] == _id, OPENBIS_DATA)][0].update(json_data)
+                [*filter(lambda d: d["id"] == _id, DATA)][0].update(json_data)
                 # OPENBIS_DATA.append(json_data)
 
             return jsonify({"message": "Zip file processed successfully"}), 200

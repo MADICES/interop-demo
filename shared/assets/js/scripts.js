@@ -97,7 +97,7 @@ function fetchPlatformData() {
   const selectedType = document.getElementById("platformTypeSelect").value;
   if (selectedType) {
     fetch(
-      `http://localhost:${platform_url}/data/filter?type=${encodeURIComponent(
+      `http://localhost:${platform_url}/data/ontology?type=${encodeURIComponent(
         selectedType
       )}&format=ROC`
     )

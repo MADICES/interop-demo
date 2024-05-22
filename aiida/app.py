@@ -28,7 +28,7 @@ app.config["RO_CRATE_FOLDER"] = "./ro_crate/"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # Limit to 16MB
 app.config["SHARED_STATIC_PATH"] = "../shared"
 
-AIIDA_DATA = [
+DATA = [
     {
         "id": "SIM-51",
         "type": "@aiida.Simulation",
@@ -77,7 +77,7 @@ AIIDA_DATA = [
     },
 ]
 
-AIIDA_DATA_COPY = deepcopy(AIIDA_DATA)
+DATA_COPY = deepcopy(DATA)
 
 
 RDM_PLATFORMS = {
@@ -97,34 +97,13 @@ def serve_shared_content(filename):
 
 
 @app.route("/platforms", methods=["GET"])
-def get_all_platforms():
+def get_platforms():
     return jsonify(RDM_PLATFORMS)
 
 
 @app.route("/data", methods=["GET"])
-def get_all_data():
-    return jsonify(AIIDA_DATA)
-
-
-@app.route("/data/reset", methods=["GET"])
-def reset_data():
-    global AIIDA_DATA
-    AIIDA_DATA = deepcopy(AIIDA_DATA_COPY)
-    return jsonify({"message": "Data imported successfully."}), 200
-
-
-@app.route("/data/import", methods=["POST"])
-def import_data():
-    try:
-        new_data = request.json
-        # Check if item with the same ID already exists
-        if any(item["id"] == new_data["id"] for item in AIIDA_DATA):
-            return jsonify({"message": "Item with this ID already exists."}), 409
-        # Add new data to the list
-        AIIDA_DATA.append(new_data)
-        return jsonify({"message": "Data imported successfully."}), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
+def get_data():
+    return jsonify(DATA)
 
 
 @app.route("/data/filter", methods=["GET"])
@@ -133,13 +112,34 @@ def filter_data():
     if not filter_type:
         return "Type parameter is required for filtering.", 400
     filtered_data = [
-        item for item in AIIDA_DATA if item["type"].lower() == filter_type.lower()
+        item for item in DATA if item["type"].lower() == filter_type.lower()
     ]
     return jsonify(filtered_data)
 
 
+@app.route("/data/import", methods=["POST"])
+def import_data():
+    try:
+        new_data = request.json
+        # Check if item with the same ID already exists
+        if any(item["id"] == new_data["id"] for item in DATA):
+            return jsonify({"message": "Item with this ID already exists."}), 409
+        # Add new data to the list
+        DATA.append(new_data)
+        return jsonify({"message": "Data imported successfully."}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/data/reset", methods=["GET"])
+def reset_data():
+    global DATA
+    DATA = deepcopy(DATA_COPY)
+    return jsonify({"message": "Data imported successfully."}), 200
+
+
 @app.route("/data/types", methods=["GET"])
-def get_all_types():
+def get_types():
     temp_dir = app.config["UPLOAD_FOLDER"]
     # Create a new RO-Crate in the temporary directory
     crate = ROCrate()
@@ -147,7 +147,7 @@ def get_all_types():
     # Create the JSON content
     response_file_path = os.path.join(temp_dir, "response.json")
     with open(response_file_path, "w") as f:
-        json.dump([item["ontology"] for item in AIIDA_DATA], f, indent=4)
+        json.dump([item["ontology"] for item in DATA], f, indent=4)
 
     # Add the JSON file to the crate
     crate.add_file(
@@ -164,21 +164,15 @@ def get_all_types():
     )
 
 
-def extract_and_read_rocrate(file_path):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Unzip the file
-        with zipfile.ZipFile(file_path, "r") as zip_ref:
-            zip_ref.extractall(temp_dir)
-
-        # Process the unzipped directory
-        crate = ROCrate(temp_dir)
-        for entity in crate.get_entities():
-            print(entity)
-            if entity["@type"] == "RESPONSE":
-                response_file_path = os.path.join(temp_dir, entity["@id"])
-                with open(response_file_path, "r") as file:
-                    return json.load(file)
-        return None
+@app.route("/data/ontology", methods=["GET"])
+def get_objects_by_ontological_type():
+    filter_type = request.args.get("type")
+    if not filter_type:
+        return "Missing ontological type.", 400
+    filtered_data = [
+        item for item in DATA if item["ontology"].lower() == filter_type.lower()
+    ]
+    return jsonify(filtered_data)
 
 
 @app.route("/upload_rocrate", methods=["POST"])
@@ -202,6 +196,23 @@ def upload_rocrate():
                     "message": "No RESPONSE type file found in the RO-Crate or failed to read."
                 }
             )
+
+
+def extract_and_read_rocrate(file_path):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Unzip the file
+        with zipfile.ZipFile(file_path, "r") as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        # Process the unzipped directory
+        crate = ROCrate(temp_dir)
+        for entity in crate.get_entities():
+            print(entity)
+            if entity["@type"] == "RESPONSE":
+                response_file_path = os.path.join(temp_dir, entity["@id"])
+                with open(response_file_path, "r") as file:
+                    return json.load(file)
+        return None
 
 
 @app.route("/files", methods=["GET"])
@@ -309,7 +320,7 @@ def start_simulation():
         selected_object_index = next(
             (
                 index
-                for index, item in enumerate(AIIDA_DATA)
+                for index, item in enumerate(DATA)
                 if item["id"] == selected_object_id
             ),
             None,
@@ -319,7 +330,7 @@ def start_simulation():
             return jsonify({"message": "Selected object not found"}), 404
 
         # Reference the selected object directly for easier modification
-        selected_object = AIIDA_DATA[selected_object_index]
+        selected_object = DATA[selected_object_index]
         # Create a new simulation object
         new_simulation = {
             "id": f"SIM-{int(time.time())}",  # Generate a new unique ID based on the current time
@@ -342,7 +353,7 @@ def start_simulation():
             selected_object["metadata"]["has_child"] = []
         selected_object["metadata"]["has_child"].append(new_simulation)
 
-        AIIDA_DATA[selected_object_index] = selected_object
+        DATA[selected_object_index] = selected_object
 
         return jsonify(selected_object), 201
     except Exception as e:
