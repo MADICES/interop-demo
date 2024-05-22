@@ -1,10 +1,16 @@
 .hidden {
   display: none;
 }
+
 .form-label {
   width: 140px;
   font-size: larger;
 }
+
 .form-button {
   width: 100px;
+}
+
+.metadata-toggler {
+  width: 40px;
 }

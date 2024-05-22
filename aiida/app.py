@@ -147,7 +147,7 @@ def get_all_types():
     # Create the JSON content
     response_file_path = os.path.join(temp_dir, "response.json")
     with open(response_file_path, "w") as f:
-        json.dump([item["type"] for item in AIIDA_DATA], f, indent=4)
+        json.dump([item["ontology"] for item in AIIDA_DATA], f, indent=4)
 
     # Add the JSON file to the crate
     crate.add_file(
@@ -157,6 +157,7 @@ def get_all_types():
     # Write the crate to the temporary directory
     crate_dir = os.path.join(temp_dir, "ro_crate")
     crate.write_zip(crate_dir)
+    crate.write(crate_dir)
 
     return send_file(
         "temp_uploads/ro_crate.zip", as_attachment=True, download_name="ro_crate.zip"

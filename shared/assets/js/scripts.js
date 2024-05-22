@@ -79,7 +79,11 @@ function fetchPlatformTypes() {
 function updateTypeSelection(data) {
   const types = new Set(data);
   const platformTypeSelect = document.getElementById("platformTypeSelect");
-  platformTypeSelect.innerHTML = '<option value="">Select a type</option>';
+  platformTypeSelect.innerHTML = "";
+  const option = document.createElement("option");
+  option.value = "";
+  option.textContent = "Select an ontological type";
+  platformTypeSelect.appendChild(option);
   types.forEach((type) => {
     const option = document.createElement("option");
     option.value = type;
@@ -206,6 +210,7 @@ function updateTable(data) {
   const tableBody = document
     .getElementById("dataTable")
     .getElementsByTagName("tbody")[0];
+  const metadata = document.getElementById("metadata").firstElementChild;
   tableBody.innerHTML = "";
   data.forEach((item) => {
     const row = tableBody.insertRow();
@@ -218,8 +223,30 @@ function updateTable(data) {
     cellType.textContent = item.type;
     cellTitle.textContent = item.title;
     cellOnt.textContent = item.ontology;
-    cellMetadata.textContent = JSON.stringify(item.metadata);
+    const button = createMetadataToggleButton(metadata, item);
+    cellMetadata.appendChild(button);
+    cellMetadata.className = "text-center";
   });
+}
+
+function createMetadataToggleButton(metadata, item) {
+  const button = document.createElement("button");
+  button.innerHTML = "+";
+  button.className = "btn btn-outline-secondary metadata-toggler";
+  button.addEventListener("click", () => {
+    if (button.innerHTML == "+") {
+      metadata.textContent = JSON.stringify(item.metadata, null, 2);
+      button.innerHTML = "-";
+      const buttons = document.getElementsByClassName("metadata-toggler");
+      Array.from(buttons).forEach((b) => {
+        if (b !== button) b.innerHTML = "+";
+      });
+    } else {
+      metadata.textContent = "";
+      button.innerHTML = "+";
+    }
+  });
+  return button;
 }
 
 function uploadROCrate() {

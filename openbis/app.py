@@ -132,16 +132,12 @@ def import_data():
 
 @app.route("/data/filter", methods=["GET"])
 def filter_data():
-    # format = request.args.get('format')
     filter_type = request.args.get("type")
     if not filter_type:
         return "Type parameter is required for filtering.", 400
-    if filter_type == "all":
-        return jsonify(OPENBIS_DATA)
     filtered_data = [
-        item for item in OPENBIS_DATA if item["ontology"].lower() == filter_type.lower()
+        item for item in OPENBIS_DATA if item["type"].lower() == filter_type.lower()
     ]
-
     return jsonify(filtered_data)
 
 
