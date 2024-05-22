@@ -165,10 +165,16 @@ function resetData() {
   fetch("/data/reset").then(
     () => {
       fetchData();
+      hideMetadata();
       hideError();
     },
     () => handleError("Failed to reset data.")
   );
+}
+
+function hideMetadata() {
+  const metadata = document.getElementById("metadata");
+  metadata.textContent = "";
 }
 
 function populateTypes(data) {
