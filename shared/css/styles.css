@@ -1,14 +1,6 @@
 .hidden {
   display: none;
 }
-
-.btn-primary {
-  background-color: blueviolet;
-}
-
-.btn-success {
-  background-color: cadetblue;
-}
 .form-label {
   width: 140px;
   font-size: larger;

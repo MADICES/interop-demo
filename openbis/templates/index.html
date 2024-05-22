@@ -7,37 +7,14 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
-    <style>
-      .hidden {
-        display: none;
-      }
-
-      .btn-primary {
-        background-color: blueviolet;
-      }
-
-      .btn-success {
-        background-color: cadetblue;
-      }
-      .form-label {
-        width: 140px;
-        font-size: larger;
-      }
-      .form-button {
-        width: 100px;
-      }
-    </style>
+    <link rel="stylesheet" href="shared/css/styles.css" />
+    <link rel="stylesheet" href="css/styles.css" />
   </head>
 
   <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
     <header class="container d-flex align-items-center my-3">
-      <img
-        class="me-5"
-        src="static/openBIS_Logo.png"
-        alt="Logo"
-        height="60px"
-      />
+      <img class="me-5" src="img/openBIS_Logo.png" alt="Logo" height="60px" />
       <h1 class="mb-0 fs-3">Lab Notebook & Inventory Manager</h1>
     </header>
 
@@ -59,25 +36,35 @@
           </select>
           <button
             onclick="fetchPlatformTypes()"
+            id="connectButton"
             class="btn btn-primary form-button"
             disabled
           >
             Connect
           </button>
         </div>
-        <div id="aiidatypes" class="mb-3">
-          <div id="aiidaSteps" class="mb-3"></div>
-        </div>
-        <div class="mb-3">
-          <h2>Filter by AiiDA Type</h2>
-          <select id="aiidatypeSelect" class="form-select mb-3">
+        <div id="portSteps" class="mb-3"></div>
+        <div id="filterSection" class="mb-3 d-flex d-none align-items-center">
+          <div class="form-label">
+            <label>Ontology:</label>
+          </div>
+          <select
+            name="platformTypeSelect"
+            id="platformTypeSelect"
+            class="form-select me-2"
+          >
             <option value="">Select a type</option>
           </select>
-          <button onclick="fetchFilteredAiiDAData()" class="btn btn-success">
-            Fetch from AiiDA
+          <button
+            onclick="fetchPlatformData()"
+            id="fetchButton"
+            class="btn btn-success form-button"
+            disabled
+          >
+            Fetch
           </button>
         </div>
-        <ul id="aiidadataList" class="list-group mt-3"></ul>
+        <ul id="platformDataList" class="list-group mt-3"></ul>
       </div>
     </div>
 
@@ -93,12 +80,15 @@
         <div class="col-12">
           <h1 class="mb-4">Data Viewer</h1>
           <div class="mb-3 d-flex align-items-center">
-            <h4 class="me-3 mb-0">Ontology:</h4>
+            <label class="form-label">Ontology:</label>
             <select
               id="typeSelect"
               class="form-select me-2"
               onChange="fetchFilteredData()"
             ></select>
+            <button onclick="resetData()" class="btn btn-danger form-button">
+              Reset
+            </button>
           </div>
           <div class="table-responsive">
             <table class="table table-striped mt-3" id="dataTable">
@@ -131,7 +121,7 @@
           accept=".zip"
           class="form-control mb-2"
         />
-        <button type="button" onclick="uploadRocrate()" class="btn btn-primary">
+        <button type="button" onclick="uploadROCrate()" class="btn btn-primary">
           Upload
         </button>
       </form>
@@ -139,229 +129,6 @@
       <pre id="result1" class="bg-light p-3 border"></pre>
     </div>
 
-    <!-- event listeners -->
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        fetchPlatforms();
-        fetchData();
-      });
-
-      document
-        .getElementById("platformSelect")
-        .addEventListener("change", () => {
-          const selectedPlatform = platformSelect.value;
-          const connectButton = platformSelect.nextElementSibling;
-          connectButton.disabled = !selectedPlatform;
-          if (!selectedPlatform) {
-            toggleFilterSection();
-            updatePlatformDataList([]);
-          }
-        });
-
-      document
-        .getElementById("platformTypeSelect")
-        .addEventListener("change", () => {
-          const selectedType = platformTypeSelect.value;
-          const fetchButton = platformTypeSelect.nextElementSibling;
-          fetchButton.disabled = !selectedType;
-          if (!selectedType) {
-            updatePlatformDataList([]);
-          }
-        });
-    </script>
-
-    <script>
-      function fetchPlatforms() {
-        fetch("/platforms")
-          .then((response) => response.json())
-          .then((data) => {
-            const platformSelect = document.getElementById("platformSelect");
-            data.forEach((platform) => {
-              const option = document.createElement("option");
-              option.value = platform;
-              option.textContent = platform;
-              platformSelect.appendChild(option);
-            });
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-            alert("Failed to fetch RDM platforms.");
-          });
-      }
-
-      function handleError(message) {
-        const errorElement = document.getElementById("error");
-        errorElement.textContent = message;
-        errorElement.style.display = "block";
-      }
-
-      function hideError() {
-        const errorElement = document.getElementById("error");
-        errorElement.style.display = "none";
-      }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        fetchData();
-      });
-
-      function fetchData() {
-        fetch("/data")
-          .then((response) => response.json())
-          .then((data) => {
-            updateTable(data);
-            populateTypes(data);
-          })
-          .catch((error) => handleError("Failed to fetch data."));
-      }
-
-      function populateTypes(data) {
-        const types = new Set(data.map((item) => item.ontology));
-        const typeSelect = document.getElementById("typeSelect");
-        typeSelect.innerHTML = '<option value="all">All</option>';
-        types.forEach((type) => {
-          const option = document.createElement("option");
-          option.value = type;
-          option.textContent = type;
-          typeSelect.appendChild(option);
-        });
-      }
-
-      function fetchFilteredData() {
-        const selectedType = document.getElementById("typeSelect").value;
-        if (selectedType) {
-          fetch(`/data/filter?type=${encodeURIComponent(selectedType)}`)
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.length > 0) {
-                updateTable(data);
-                hideError();
-              } else {
-                handleError("No data found for the selected type.");
-              }
-            })
-            .catch((error) => handleError("Failed to fetch filtered data."));
-        } else {
-          alert("Please select a type to filter by!");
-        }
-      }
-
-      function updateTable(data) {
-        const tableBody = document
-          .getElementById("dataTable")
-          .getElementsByTagName("tbody")[0];
-        tableBody.innerHTML = "";
-        data.forEach((item) => {
-          const row = tableBody.insertRow();
-          const cellId = row.insertCell(0);
-          const cellType = row.insertCell(1);
-          const cellTitle = row.insertCell(2);
-          const cellOnt = row.insertCell(3);
-          const cellMetadata = row.insertCell(4);
-          cellId.textContent = item.id;
-          cellType.textContent = item.type;
-          cellTitle.textContent = item.title;
-          cellOnt.textContent = item.ontology;
-          cellMetadata.textContent = JSON.stringify(item.metadata);
-        });
-      }
-
-      function fetchAiiDAData() {
-        fetch("http://localhost:5002/data/types", {
-          method: "GET",
-          headers: {
-            Accept: "application/zip",
-          },
-        })
-          .then((response) => {
-            if (response.ok) return response.blob();
-            throw new Error("Network response was not ok.");
-          })
-          .then((blob) => {
-            // Use JSZip to read the blob as a zip file
-            const jsZip = new JSZip();
-            return jsZip.loadAsync(blob);
-          })
-          .then((zip) => {
-            // Assume 'response.json' is the name of the file inside the RO-Crate zip
-            const filename = "response.json";
-            if (filename in zip.files) {
-              return zip.files[filename].async("string"); // Get the file content as a string
-            }
-            throw new Error("File not found in zip");
-          })
-          .then((jsonString) => {
-            // Parse JSON string and log the data or do something with it
-            const data = JSON.parse(jsonString);
-            console.log(data);
-            // Optionally update the UI here to display the data
-            const aiidatypes = new Set(data);
-            const aiidatypeSelect = document.getElementById("aiidatypeSelect");
-            aiidatypeSelect.innerHTML =
-              '<option value="">Select a type</option>'; // Reset
-            aiidatypes.forEach((type) => {
-              console.log(type);
-              const option = document.createElement("option");
-              option.value = type;
-              option.textContent = type;
-              aiidatypeSelect.appendChild(option);
-            });
-          })
-          .catch((error) => console.error("Error:", error));
-      }
-
-      function fetchFilteredAiiDAData() {
-        var selectedType = document.getElementById("aiidatypeSelect").value;
-        if (selectedType) {
-          fetch(
-            `http://localhost:5002/data/filter?type=${encodeURIComponent(
-              selectedType
-            )}`
-          )
-            .then((response) => response.json())
-            .then((data) => updateAiiDAList(data))
-            .catch((error) => console.error("Error:", error));
-        } else {
-          alert("Please select a type to filter by!");
-        }
-      }
-
-      function updateAiiDAList(data) {
-        const list = document.getElementById("aiidadataList");
-        list.innerHTML = ""; // Clear previous entries
-        data.forEach((item) => {
-          const li = document.createElement("li");
-          li.className = "list-group-item";
-          li.textContent = `ID: ${item.id}, Type: ${item.type}`;
-          list.appendChild(li);
-        });
-      }
-    </script>
-
-    <script>
-      function uploadRocrate() {
-        const formData = new FormData();
-        const fileInput = document.getElementById("fileInput1");
-        const resultDiv = document.getElementById("result1");
-
-        if (fileInput.files.length > 0) {
-          formData.append("file", fileInput.files[0]);
-
-          fetch("/upload_rocrate", {
-            method: "POST",
-            body: formData,
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              resultDiv.textContent = JSON.stringify(data, null, 2);
-            })
-            .catch((error) => {
-              console.error("Error:", error);
-              resultDiv.textContent = "Failed to upload and process the file.";
-            });
-        } else {
-          resultDiv.textContent = "Please select a file to upload.";
-        }
-      }
-    </script>
+    <script src="js/scripts.js"></script>
   </body>
 </html>

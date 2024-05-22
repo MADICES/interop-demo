@@ -1,21 +1,31 @@
 import io
-from flask import Flask, render_template, request, jsonify, send_file
-from rocrate.rocrate import ROCrate
-from flask_cors import CORS
-import os
-import zipfile
-import shutil
-from werkzeug.utils import secure_filename
 import json
+import os
+import shutil
 import tempfile
+import zipfile
+from copy import deepcopy
+from pathlib import Path
 
-app = Flask(__name__)
+from flask import Flask, jsonify, render_template, request, send_file
+from flask_cors import CORS
+from rocrate.rocrate import ROCrate
+from werkzeug.utils import secure_filename
+
+app = Flask(
+    __name__,
+    static_url_path="",
+    static_folder="assets",
+)
+
 CORS(app)
+
 app.config["UPLOAD_FOLDER"] = (
     "temp_uploads/"
 )
 app.config["RO_CRATE_FOLDER"] = "ro_crate/"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # Limit to 16MB
+app.config["SHARED_STATIC_PATH"] = "../shared"
 
 OPENBIS_DATA = [
     {
@@ -67,6 +77,8 @@ OPENBIS_DATA = [
     },
 ]
 
+OPENBIS_DATA_COPY = deepcopy(OPENBIS_DATA)
+
 RDM_PLATFORMS = [
     "AiiDA",
 ]
@@ -77,6 +89,12 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/shared/<path:filename>")
+def serve_shared_content(filename):
+    file = Path(app.config["SHARED_STATIC_PATH"]) / filename
+    return send_file(file)
+
+
 @app.route("/platforms", methods=["GET"])
 def get_all_platforms():
     return jsonify(RDM_PLATFORMS)
@@ -85,6 +103,27 @@ def get_all_platforms():
 @app.route("/data", methods=["GET"])
 def get_all_data():
     return jsonify(OPENBIS_DATA)
+
+
+@app.route("/data/reset", methods=["GET"])
+def reset_data():
+    global OPENBIS_DATA
+    OPENBIS_DATA = deepcopy(OPENBIS_DATA_COPY)
+    return jsonify({"message": "Data imported successfully."}), 200
+
+
+@app.route("/data/import", methods=["POST"])
+def import_data():
+    try:
+        new_data = request.json
+        # Check if item with the same ID already exists
+        if any(item["id"] == new_data["id"] for item in OPENBIS_DATA):
+            return jsonify({"message": "Item with this ID already exists."}), 409
+        # Add new data to the list
+        OPENBIS_DATA.append(new_data)
+        return jsonify({"message": "Data imported successfully."}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 
 @app.route("/data/filter", methods=["GET"])
