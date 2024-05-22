@@ -80,9 +80,9 @@ AIIDA_DATA = [
 AIIDA_DATA_COPY = deepcopy(AIIDA_DATA)
 
 
-RDM_PLATFORMS = [
-    "openBIS",
-]
+RDM_PLATFORMS = {
+    "openBIS": 5001,
+}
 
 
 @app.route("/")

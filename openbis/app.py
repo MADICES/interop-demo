@@ -25,7 +25,7 @@ app.config["UPLOAD_FOLDER"] = (
 )
 app.config["RO_CRATE_FOLDER"] = "ro_crate/"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # Limit to 16MB
-app.config["SHARED_STATIC_PATH"] = "../shared"
+app.config["SHARED_PATH"] = "../shared"
 
 OPENBIS_DATA = [
     {
@@ -83,15 +83,19 @@ RDM_PLATFORMS = [
     "AiiDA",
 ]
 
+RDM_PLATFORMS = {
+    "AiiDA": 5002,
+}
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-@app.route("/shared/<path:filename>")
-def serve_shared_content(filename):
-    file = Path(app.config["SHARED_STATIC_PATH"]) / filename
+@app.route("/shared/<path:path>")
+def serve_shared_content(path):
+    file = Path(app.config["SHARED_PATH"]) / path
     return send_file(file)
 
 
