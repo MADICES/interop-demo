@@ -13,121 +13,22 @@
 
   <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
-    <header class="container d-flex align-items-center my-3">
-      <img class="me-5" src="img/openBIS_Logo.png" alt="Logo" height="60px" />
-      <h1 class="mb-0 fs-3">Lab Notebook & Inventory Manager</h1>
-    </header>
+
+    {% with src="openBIS_Logo.png", title="Lab Notebook & Inventory Manager" %}
+      {% include "header.html" %}
+    {% endwith %}
 
     <hr />
 
-    <div id="cratePort" class="container">
-      <div class="col-12">
-        <h1 class="mb-4">Crate Port</h1>
-        <div id="platformSection" class="mb-3 d-flex align-items-center">
-          <div class="form-label">
-            <label>Platform:</label>
-          </div>
-          <select
-            name="platformSelect"
-            id="platformSelect"
-            class="form-select me-2"
-          >
-            <option value="">Select a platform</option>
-          </select>
-          <button
-            onclick="fetchPlatformTypes()"
-            id="connectButton"
-            class="btn btn-primary form-button"
-            disabled
-          >
-            Connect
-          </button>
-        </div>
-        <div id="portSteps" class="mb-3"></div>
-        <div id="filterSection" class="mb-3 d-flex d-none align-items-center">
-          <div class="form-label">
-            <label>Ontology:</label>
-          </div>
-          <select
-            name="platformTypeSelect"
-            id="platformTypeSelect"
-            class="form-select me-2"
-          >
-            <option value="">Select a type</option>
-          </select>
-          <button
-            onclick="fetchPlatformData()"
-            id="fetchButton"
-            class="btn btn-success form-button"
-            disabled
-          >
-            Fetch
-          </button>
-        </div>
-        <ul id="platformDataList" class="list-group mt-3"></ul>
-      </div>
-    </div>
+    {% include "crate-port.html" %}
 
     <hr />
 
-    <div id="dataViewer" class="container">
-      <div
-        id="error"
-        class="alert alert-danger mt-3"
-        style="display: none"
-      ></div>
-      <div class="row">
-        <div class="col-12">
-          <h1 class="mb-4">Data Viewer</h1>
-          <div class="mb-3 d-flex align-items-center">
-            <label class="form-label">Ontology:</label>
-            <select
-              id="typeSelect"
-              class="form-select me-2"
-              onChange="fetchFilteredData()"
-            ></select>
-            <button onclick="resetData()" class="btn btn-danger form-button">
-              Reset
-            </button>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-striped mt-3" id="dataTable">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Type</th>
-                  <th>Title</th>
-                  <th>Ontology</th>
-                  <th>Metadata</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Data rows will be appended here -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+    {% include "data-viewer.html" %}
 
     <hr />
 
-    <div id="crateViewer" class="container">
-      <h1 class="mb-4">RO-Crate Viewer</h1>
-      <form id="uploadForm1" class="mb-4">
-        <input
-          type="file"
-          id="fileInput1"
-          accept=".zip"
-          class="form-control mb-2"
-        />
-        <button type="button" onclick="uploadROCrate()" class="btn btn-primary">
-          Upload
-        </button>
-      </form>
-      <h2>Results:</h2>
-      <pre id="result1" class="bg-light p-3 border"></pre>
-    </div>
+    {% include "crate-viewer.html" %}
 
     <script src="shared/assets/js/scripts.js"></script>
     <script src="js/scripts.js"></script>
