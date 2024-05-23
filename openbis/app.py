@@ -7,6 +7,7 @@ import zipfile
 from copy import deepcopy
 from pathlib import Path
 
+import jinja2
 from flask import Flask, jsonify, render_template, request, send_file
 from flask_cors import CORS
 from rocrate.rocrate import ROCrate
@@ -26,6 +27,13 @@ app.config["UPLOAD_FOLDER"] = (
 app.config["RO_CRATE_FOLDER"] = "ro_crate/"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # Limit to 16MB
 app.config["SHARED_PATH"] = "../shared"
+
+app.jinja_loader = jinja2.ChoiceLoader(
+    [
+        jinja2.FileSystemLoader("templates"),
+        jinja2.FileSystemLoader("../shared/templates"),
+    ]
+)
 
 DATA = [
     {
