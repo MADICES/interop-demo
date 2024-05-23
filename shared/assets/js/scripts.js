@@ -172,11 +172,6 @@ function resetData() {
   );
 }
 
-function hideMetadata() {
-  const metadata = document.getElementById("metadata");
-  metadata.textContent = "";
-}
-
 function populateTypes(data) {
   const types = new Set(data.map((item) => item.type));
   const typeSelect = document.getElementById("typeSelect");
@@ -191,6 +186,16 @@ function populateTypes(data) {
     option.textContent = type;
     typeSelect.appendChild(option);
   });
+}
+
+function refreshData() {
+  fetchFilteredData();
+  hideMetadata();
+}
+
+function hideMetadata() {
+  const metadata = document.getElementById("metadata");
+  metadata.textContent = "";
 }
 
 function fetchFilteredData() {
@@ -216,7 +221,7 @@ function updateTable(data) {
   const tableBody = document
     .getElementById("dataTable")
     .getElementsByTagName("tbody")[0];
-  const metadata = document.getElementById("metadata").firstElementChild;
+  const metadata = document.getElementById("metadata");
   tableBody.innerHTML = "";
   data.forEach((item) => {
     const row = tableBody.insertRow();
@@ -229,26 +234,36 @@ function updateTable(data) {
     cellType.textContent = item.type;
     cellTitle.textContent = item.title;
     cellOnt.textContent = item.ontology;
-    const button = createMetadataToggleButton(metadata, item);
+    const button = createMetadataButton(metadata, item);
     cellMetadata.appendChild(button);
     cellMetadata.className = "text-center";
   });
 }
 
-function createMetadataToggleButton(metadata, item) {
+function createMetadataButton(metadata, item) {
+  const showMetadata = (item, metadata) => {
+    button.innerHTML = "-";
+    const pre = document.createElement("pre");
+    pre.textContent = JSON.stringify(item.metadata, null, 2);
+    metadata.appendChild(pre);
+  };
+
+  const resetOtherMetadataButtons = () => {
+    const buttons = document.getElementsByClassName("metadata-toggler");
+    Array.from(buttons).forEach((b) => {
+      if (b !== button) b.innerHTML = "+";
+    });
+  };
+
   const button = document.createElement("button");
   button.innerHTML = "+";
   button.className = "btn btn-outline-secondary metadata-toggler";
   button.addEventListener("click", () => {
+    metadata.innerHTML = "";
     if (button.innerHTML == "+") {
-      metadata.textContent = JSON.stringify(item.metadata, null, 2);
-      button.innerHTML = "-";
-      const buttons = document.getElementsByClassName("metadata-toggler");
-      Array.from(buttons).forEach((b) => {
-        if (b !== button) b.innerHTML = "+";
-      });
+      showMetadata(item, metadata);
+      resetOtherMetadataButtons();
     } else {
-      metadata.textContent = "";
       button.innerHTML = "+";
     }
   });
