@@ -57,6 +57,13 @@ DATA = [
         "ontology": "@https://aiida.net/Workflow",
     },
     {
+        "id": "TPMS",
+        "type": "@aiida.Sample",
+        "title": "Tropomyosin",
+        "metadata": {"hasBioPolymerSequence": "GGGTTCTCTATCTCTAAAAGGTGTCAA"},
+        "ontology": "@https://schema.org/Protein",
+    },
+    {
         "id": "M-89",
         "type": "@aiida.Sample",
         "title": "Crystal",
@@ -67,13 +74,6 @@ DATA = [
             "molecularWeight": "46.068 g/mol",
         },
         "ontology": "@https://schema.org/MolecularEntity",
-    },
-    {
-        "id": "TPMS",
-        "type": "@aiida.Sample",
-        "title": "Tropomyosin",
-        "metadata": {"hasBioPolymerSequence": "GGGTTCTCTATCTCTAAAAGGTGTCAA"},
-        "ontology": "@https://schema.org/Protein",
     },
 ]
 
