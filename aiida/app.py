@@ -11,6 +11,7 @@ import jinja2
 import requests
 from flask import Flask, jsonify, render_template, request, send_file
 from flask_cors import CORS
+from pyld import jsonld
 from rocrate.rocrate import ROCrate
 from werkzeug.utils import secure_filename
 
@@ -22,12 +23,10 @@ app = Flask(
 
 CORS(app)
 
-app.config["UPLOAD_FOLDER"] = (
-    "./temp_uploads/"  # Define where uploaded files will be stored
-)
-app.config["RO_CRATE_FOLDER"] = "./ro_crate/"
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # Limit to 16MB
-app.config["SHARED_STATIC_PATH"] = "../shared"
+app.config["UPLOAD_FOLDER"] = "temp_uploads/"
+app.config["RO_CRATE_FOLDER"] = "ro_crate/"
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+app.config["SHARED_PATH"] = "../shared"
 
 app.jinja_loader = jinja2.ChoiceLoader(
     [
@@ -35,6 +34,42 @@ app.jinja_loader = jinja2.ChoiceLoader(
         jinja2.FileSystemLoader("../shared/templates"),
     ]
 )
+
+METADATA_CONTEXT = {
+    "https://aiida.net/Simulation": {
+        "@context": {},
+    },
+    "https://aiida.net/Workflow": {
+        "@context": {},
+    },
+    "https://schema.org/Protein": {
+        "@context": {},
+    },
+    "https://schema.org/MolecularEntity": {
+        "@context": {
+            "key": {
+                "@id": "https://schema.org/inChIKey",
+                "@type": "xsd:string",
+            },
+            "label": {
+                "@id": "https://schema.org/iupacName",
+                "@type": "xsd:string",
+            },
+            "formula": {
+                "@id": "https://schema.org/molecularFormula",
+                "@type": "xst:string",
+            },
+            "weight": {
+                "@id": "https://schema.org/molecularWeight",
+                "@type": "xsd:float",
+            },
+            "units": {
+                "@id": "https://schema.org/molecularWeightUnits",
+                "@type": "xsd:string",
+            },
+        },
+    },
+}
 
 DATA = [
     {
@@ -52,7 +87,7 @@ DATA = [
                 "include_comments": True,
             },
         },
-        "ontology": "@https://aiida.net/Simulation",
+        "ontology": "https://aiida.net/Simulation",
     },
     {
         "id": "WFML-1",
@@ -62,26 +97,27 @@ DATA = [
             "uuid": "1e673a08-a0ff-47ad-9a09-52321f6dc2dc",
             "cmdline_params": ["-i", "aiida.inp"],
         },
-        "ontology": "@https://aiida.net/Workflow",
+        "ontology": "https://aiida.net/Workflow",
     },
     {
         "id": "TPMS",
         "type": "@aiida.Sample",
         "title": "Tropomyosin",
         "metadata": {"hasBioPolymerSequence": "GGGTTCTCTATCTCTAAAAGGTGTCAA"},
-        "ontology": "@https://schema.org/Protein",
+        "ontology": "https://schema.org/Protein",
     },
     {
         "id": "M-89",
         "type": "@aiida.Sample",
         "title": "Crystal",
         "metadata": {
-            "inChIKey": "ETHNL",
-            "iupacName": "Ethanol",
-            "molecularFormula": "C2H5OH",
-            "molecularWeight": "46.068 g/mol",
+            "key": "ETHNL",
+            "label": "Ethanol",
+            "formula": "C2H5OH",
+            "weight": 46.068,
+            "units": "g/mol",
         },
-        "ontology": "@https://schema.org/MolecularEntity",
+        "ontology": "https://schema.org/MolecularEntity",
     },
 ]
 
@@ -100,7 +136,7 @@ def index():
 
 @app.route("/shared/<path:filename>")
 def serve_shared_content(filename):
-    file = Path(app.config["SHARED_STATIC_PATH"]) / filename
+    file = Path(app.config["SHARED_PATH"]) / filename
     return send_file(file)
 
 
@@ -123,20 +159,6 @@ def filter_data():
         item for item in DATA if item["type"].lower() == filter_type.lower()
     ]
     return jsonify(filtered_data)
-
-
-@app.route("/data/import", methods=["POST"])
-def import_data():
-    try:
-        new_data = request.json
-        # Check if item with the same ID already exists
-        if any(item["id"] == new_data["id"] for item in DATA):
-            return jsonify({"message": "Item with this ID already exists."}), 409
-        # Add new data to the list
-        DATA.append(new_data)
-        return jsonify({"message": "Data imported successfully."}), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
 
 
 @app.route("/data/reset", methods=["GET"])
@@ -174,13 +196,38 @@ def get_types():
 
 @app.route("/data/ontology", methods=["GET"])
 def get_objects_by_ontological_type():
-    filter_type = request.args.get("type")
-    if not filter_type:
+    ontology = request.args.get("type")
+    if not ontology:
         return "Missing ontological type.", 400
-    filtered_data = [
-        item for item in DATA if item["ontology"].lower() == filter_type.lower()
+    context = METADATA_CONTEXT.get(ontology)
+    filtered = [
+        {
+            **item,
+            "metadata": jsonld.expand({**context, **item["metadata"]}),
+        }
+        for item in DATA
+        if item["ontology"].lower() == ontology.lower()
     ]
-    return jsonify(filtered_data)
+    return jsonify(filtered)
+
+
+@app.route("/data/import", methods=["POST"])
+def import_data():
+    try:
+        new_data = request.json
+        if any(item["id"] == new_data["id"] for item in DATA):
+            return jsonify({"message": "Item with this ID already exists."}), 409
+        context = METADATA_CONTEXT.get(new_data["ontology"])["@context"]
+        metadata = jsonld.compact(new_data["metadata"], context)
+        metadata.pop("@context")
+        new_data = {
+            **new_data,
+            "metadata": metadata,
+        }
+        DATA.append(new_data)
+        return jsonify({"message": "Data imported successfully."}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 
 @app.route("/upload_rocrate", methods=["POST"])
@@ -354,7 +401,7 @@ def start_simulation():
                 },
                 "aiida_version": "2.4.3",
             },
-            "ontology": "@https://aiida.net/Simulation",
+            "ontology": "https://aiida.net/Simulation",
         }
 
         if "has_child" not in selected_object["metadata"]:

@@ -42,6 +42,22 @@ function fetchPlatforms() {
 }
 
 function fetchPlatformTypes() {
+  const updateTypeSelection = (data) => {
+    const types = new Set(data);
+    const platformTypeSelect = document.getElementById("platformTypeSelect");
+    platformTypeSelect.innerHTML = "";
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Select an ontological type";
+    platformTypeSelect.appendChild(option);
+    types.forEach((type) => {
+      const option = document.createElement("option");
+      option.value = type;
+      option.textContent = type;
+      platformTypeSelect.appendChild(option);
+    });
+  };
+
   const platform_url = document.getElementById("platformSelect").value;
   fetch(`http://localhost:${platform_url}/data/types`, {
     method: "GET",
@@ -76,22 +92,6 @@ function fetchPlatformTypes() {
     });
 }
 
-function updateTypeSelection(data) {
-  const types = new Set(data);
-  const platformTypeSelect = document.getElementById("platformTypeSelect");
-  platformTypeSelect.innerHTML = "";
-  const option = document.createElement("option");
-  option.value = "";
-  option.textContent = "Select an ontological type";
-  platformTypeSelect.appendChild(option);
-  types.forEach((type) => {
-    const option = document.createElement("option");
-    option.value = type;
-    option.textContent = type;
-    platformTypeSelect.appendChild(option);
-  });
-}
-
 function fetchPlatformData() {
   const platform_url = document.getElementById("platformSelect").value;
   const selectedType = document.getElementById("platformTypeSelect").value;
@@ -123,6 +123,7 @@ function updatePlatformDataList(data) {
     const span = document.createElement("span");
     span.innerHTML = `
             <strong>ID:</strong> ${item.id}
+            <strong>title:</strong> ${item.title}
             <strong>Ontology:</strong> ${item.ontology}
           `;
     li.appendChild(span);
@@ -149,6 +150,7 @@ function importData(item) {
     .then((response) => {
       if (response.ok) {
         fetchData();
+        hideMetadata();
       } else {
         response.json().then((data) => {
           alert(data.message);

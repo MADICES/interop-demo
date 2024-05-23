@@ -13,6 +13,8 @@ from flask_cors import CORS
 from rocrate.rocrate import ROCrate
 from werkzeug.utils import secure_filename
 
+from pyld import jsonld
+
 app = Flask(
     __name__,
     static_url_path="",
@@ -21,11 +23,9 @@ app = Flask(
 
 CORS(app)
 
-app.config["UPLOAD_FOLDER"] = (
-    "temp_uploads/"
-)
+app.config["UPLOAD_FOLDER"] = "temp_uploads/"
 app.config["RO_CRATE_FOLDER"] = "ro_crate/"
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # Limit to 16MB
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 app.config["SHARED_PATH"] = "../shared"
 
 app.jinja_loader = jinja2.ChoiceLoader(
@@ -35,53 +35,90 @@ app.jinja_loader = jinja2.ChoiceLoader(
     ]
 )
 
+METADATA_CONTEXT = {
+    "https://openbis.ont.ethz.ch/DataSet": {
+        "@context": {},
+    },
+    "https://openbis.ont.ethz.ch/Experiment": {
+        "@context": {},
+    },
+    "https://schema.org/Protein": {
+        "@context": {},
+    },
+    "https://schema.org/MolecularEntity": {
+        "@context": {
+            "inChIKey": {
+                "@id": "https://schema.org/inChIKey",
+                "@type": "xsd:string",
+            },
+            "iupacName": {
+                "@id": "https://schema.org/iupacName",
+                "@type": "xsd:string",
+            },
+            "molecularFormula": {
+                "@id": "https://schema.org/molecularFormula",
+                "@type": "xst:string",
+            },
+            "molecularWeight": {
+                "@id": "https://schema.org/molecularWeight",
+                "@type": "xsd:float",
+            },
+            "molecularWeightUnits": {
+                "@id": "https://schema.org/molecularWeightUnits",
+                "@type": "xsd:string",
+            },
+        },
+    },
+}
+
 DATA = [
     {
-        "id": "20240424084127547-750",
+        "id": "20240424-750",
         "type": "@openBIS.Dataset",
         "title": "Research in Ontology",
         "metadata": {"info": "1D image"},
-        "ontology": "@https://openbis.ont.ethz.ch/DataSet",
+        "ontology": "https://openbis.ont.ethz.ch/DataSet",
     },
     {
-        "id": "20240424084127547-751",
+        "id": "20240424-751",
         "type": "@openBIS.Dataset",
         "title": "Data related to Ontology Research",
         "metadata": {"info": "2D image"},
-        "ontology": "@https://openbis.ont.ethz.ch/DataSet",
+        "ontology": "https://openbis.ont.ethz.ch/DataSet",
     },
     {
-        "id": "20240320011823235-1",
+        "id": "20240320-1",
         "type": "@openBIS.Experiment",
         "title": "Experiment 1",
         "metadata": {"info": "Experiment on algea"},
-        "ontology": "@https://openbis.ont.ethz.ch/Experiment",
+        "ontology": "https://openbis.ont.ethz.ch/Experiment",
     },
     {
-        "id": "20240320011823235-2",
+        "id": "20240320-2",
         "type": "@openBIS.Experiment",
         "title": "Experiment 2",
         "metadata": None,
-        "ontology": "@https://openbis.ont.ethz.ch/Experiment",
+        "ontology": "https://openbis.ont.ethz.ch/Experiment",
     },
     {
-        "id": "20240402011823235-1280",
+        "id": "20240402-1280",
         "type": "@openBIS.Sample",
         "title": "Protein",
         "metadata": {"hasBioPolymerSequence": "AAACCTTTGTACAATG"},
-        "ontology": "@https://schema.org/Protein",
+        "ontology": "https://schema.org/Protein",
     },
     {
-        "id": "20240402011823235-1289",
+        "id": "20240402-1289",
         "type": "@openBIS.Sample",
         "title": "Molecule",
         "metadata": {
             "inChIKey": "MTHN",
             "iupacName": "Methane",
             "molecularFormula": "CH4",
-            "molecularWeight": "16.043 g/mol-1",
+            "molecularWeight": 16.043,
+            "molecularWeightUnits": "g/mol",
         },
-        "ontology": "@https://schema.org/MolecularEntity",
+        "ontology": "https://schema.org/MolecularEntity",
     },
 ]
 
@@ -128,20 +165,6 @@ def filter_data():
     return jsonify(filtered_data)
 
 
-@app.route("/data/import", methods=["POST"])
-def import_data():
-    try:
-        new_data = request.json
-        # Check if item with the same ID already exists
-        if any(item["id"] == new_data["id"] for item in DATA):
-            return jsonify({"message": "Item with this ID already exists."}), 409
-        # Add new data to the list
-        DATA.append(new_data)
-        return jsonify({"message": "Data imported successfully."}), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-
 @app.route("/data/reset", methods=["GET"])
 def reset_data():
     global DATA
@@ -177,13 +200,38 @@ def get_types():
 
 @app.route("/data/ontology", methods=["GET"])
 def get_objects_by_ontological_type():
-    filter_type = request.args.get("type")
-    if not filter_type:
+    ontology = request.args.get("type")
+    if not ontology:
         return "Missing ontological type.", 400
-    filtered_data = [
-        item for item in DATA if item["ontology"].lower() == filter_type.lower()
+    context = METADATA_CONTEXT.get(ontology)
+    filtered = [
+        {
+            **item,
+            "metadata": jsonld.expand({**context, **item["metadata"]}),
+        }
+        for item in DATA
+        if item["ontology"].lower() == ontology.lower()
     ]
-    return jsonify(filtered_data)
+    return jsonify(filtered)
+
+
+@app.route("/data/import", methods=["POST"])
+def import_data():
+    try:
+        new_data = request.json
+        if any(item["id"] == new_data["id"] for item in DATA):
+            return jsonify({"message": "Item with this ID already exists."}), 409
+        context = METADATA_CONTEXT.get(new_data["ontology"])["@context"]
+        metadata = jsonld.compact(new_data["metadata"], context)
+        metadata.pop("@context")
+        new_data = {
+            **new_data,
+            "metadata": metadata,
+        }
+        DATA.append(new_data)
+        return jsonify({"message": "Data imported successfully."}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 
 @app.route("/upload_rocrate", methods=["POST"])
