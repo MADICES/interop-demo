@@ -1,26 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>AiiDA Workflow Manager</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="shared/assets/css/styles.css" />
-    <link rel="stylesheet" href="css/styles.css" />
-  </head>
+
+  {% with title="AiiDA Workflow Manager" %}
+    {% include "head.html" %}
+  {% endwith %}
 
   <body>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
 
     {% with src="logo-light.svg", title="Workflow Manager" %}
-      {% include "header.html" %}
+      {% include "banner.html" %}
     {% endwith %}
-
-    <hr />
-
-    {% include "crate-port.html" %}
 
     <hr />
 
@@ -28,13 +19,16 @@
 
     <hr />
 
+    {% include "crate-port.html" %}
+
+    <hr />
+
     {% include "simulations.html" %}
 
     <hr />
 
-    {% include "crate-viewer.html" %}
-
     <script src="shared/assets/js/scripts.js"></script>
     <script src="js/scripts.js"></script>
+
   </body>
 </html>
