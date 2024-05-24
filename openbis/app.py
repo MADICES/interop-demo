@@ -184,15 +184,20 @@ def import_data():
         if context:
             object_type = MAPPING[ontology]
             if ctx := context.get("@context", {}):
-                metadata = jsonld.compact(new_data["metadata"], ctx)
+                expanded = jsonld.expand(
+                    {
+                        "@context": new_data["@context"],
+                        **new_data["metadata"],
+                    },
+                )
+                metadata = jsonld.compact(expanded, ctx)
                 metadata.pop("@context")
             else:
                 metadata = new_data["metadata"]
         else:
-            object_type = "@aiida.Object"
+            object_type = "@openBIS.Object"
             MAPPING[ontology] = object_type
-            # TODO introduce the context for the new ontology
-            # CONTEXT[ontology] = ...
+            CONTEXT[ontology] = {"@context": new_data["@context"]}
             metadata = new_data["metadata"]
 
         ids = IDS[object_type]

@@ -88,6 +88,7 @@ function fetchPlatformTypes() {
       showFilterSection();
     })
     .catch((error) => {
+      console.log(error);
       handleError("Failed to fetch or process data.");
     });
 }
@@ -99,13 +100,37 @@ function fetchPlatformData() {
     fetch(
       `http://localhost:${platform_url}/data/ontology?type=${encodeURIComponent(
         selectedType
-      )}&format=ROC`
+      )}&format=ROC`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/zip",
+        },
+      }
     )
-      .then((response) => response.json())
-      .then((data) => {
+      .then((response) => {
+        if (response.ok) {
+          return response.blob();
+        }
+        throw new Error("Network response was not ok.");
+      })
+      .then((blob) => {
+        const jsZip = new JSZip();
+        return jsZip.loadAsync(blob);
+      })
+      .then((zip) => {
+        const filename = "response.json";
+        if (filename in zip.files) {
+          return zip.files[filename].async("string");
+        }
+        throw new Error("File not found in zip");
+      })
+      .then((jsonString) => {
+        const data = JSON.parse(jsonString);
         updatePlatformDataList(data);
       })
       .catch((error) => {
+        console.log(error);
         handleError("Failed to fetch filtered data.");
       });
   } else {
@@ -239,7 +264,7 @@ function updateTable(data) {
         resetOtherMetadataButtons();
         button.innerHTML = "-";
         metadata.textContent = JSON.stringify(item["metadata"], null, 2);
-        context.textContent = JSON.stringify(item["@context"], null, 2);
+        context.textContent = JSON.stringify(item["@context"] || {}, null, 2);
       } else {
         button.innerHTML = "+";
         metadata.textContent = "";
