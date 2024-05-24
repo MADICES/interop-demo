@@ -26,13 +26,40 @@ MAPPING = {
 
 CONTEXT: dict[str, dict] = {
     "https://aiida.net/Simulation": {
-        "@context": {},
+        "@context": {
+            "id": {
+                "@id": "https://aiida.net/id",
+                "@type": "xsd:string",
+            },
+            "aiida_version": {
+                "@id": "https://aiida.net/aiida_version",
+                "@type": "xsd:string",
+            },
+            "creation_parameters": {
+                "@id": "https://aiida.net/creation_parameters",
+                "@type": "xsd:string",
+            },
+        },
     },
     "https://aiida.net/Workflow": {
-        "@context": {},
+        "@context": {
+            "uuid": {
+                "@id": "https://aiida.net/uuid",
+                "@type": "xsd:string",
+            },
+            "cmdline_params": {
+                "@id": "https://aiida.net/cmdline_params",
+                "@type": "xsd:string",
+            },
+        },
     },
     "https://schema.org/Protein": {
-        "@context": {},
+        "@context": {
+            "hasBioPolymerSequence": {
+                "@id": "https://schema.org/hasBioPolymerSequence",
+                "@type": "xsd:string",
+            },
+        },
     },
     "https://schema.org/MolecularEntity": {
         "@context": {

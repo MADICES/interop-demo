@@ -26,13 +26,28 @@ MAPPING = {
 
 CONTEXT: dict[str, dict] = {
     "https://openbis.ont.ethz.ch/DataSet": {
-        "@context": {},
+        "@context": {
+            "info": {
+                "@id": "https://openbis.ont.ethz.ch/info",
+                "@type": "xsd:string",
+            },
+        }
     },
     "https://openbis.ont.ethz.ch/Experiment": {
-        "@context": {},
+        "@context": {
+            "info": {
+                "@id": "https://openbis.ont.ethz.ch/info",
+                "@type": "xsd:string",
+            },
+        },
     },
     "https://schema.org/Protein": {
-        "@context": {},
+        "@context": {
+            "hasBioPolymerSequence": {
+                "@id": "https://schema.org/hasBioPolymerSequence",
+                "@type": "xsd:string",
+            },
+        },
     },
     "https://schema.org/MolecularEntity": {
         "@context": {
