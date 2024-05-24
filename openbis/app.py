@@ -114,17 +114,18 @@ def get_objects_by_ontological_type():
     if not ontology:
         return "Missing ontological type.", 400
     context = CONTEXT.get(ontology, {})
-    filtered = [
-        {
-            **item,
-            "metadata": jsonld.expand({**context, **item["metadata"]})
-            if context
-            else item["metadata"],
-        }
-        for item in DATA
-        if item["ontology"].lower() == ontology.lower()
-    ]
-    return jsonify(filtered)
+    return jsonify(
+        [
+            {
+                **item,
+                "metadata": jsonld.expand({**context, **item["metadata"]})
+                if context.get("@context", None)
+                else item["metadata"],
+            }
+            for item in DATA
+            if item["ontology"].lower() == ontology.lower()
+        ]
+    )
 
 
 @app.route("/data/import", methods=["POST"])
@@ -136,19 +137,20 @@ def import_data():
             return jsonify({"message": "The item already exists."}), 409
 
         ontology = new_data["ontology"]
-        mapping: dict = CONTEXT.get(ontology, {})
+        context = CONTEXT.get(ontology, {})
 
-        if mapping:
+        if context:
             object_type = MAPPING[ontology]
-            context = mapping.get("@context", {})
-            if context:
-                metadata = jsonld.compact(new_data["metadata"], context)
+            if ctx := context.get("@context", {}):
+                metadata = jsonld.compact(new_data["metadata"], ctx)
                 metadata.pop("@context")
             else:
                 metadata = new_data["metadata"]
         else:
             object_type = "@aiida.Object"
             MAPPING[ontology] = object_type
+            # TODO introduce the context for the new ontology
+            # CONTEXT[ontology] = ...
             metadata = new_data["metadata"]
 
         ids = IDS[object_type]
