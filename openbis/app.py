@@ -96,50 +96,77 @@ def reset_data():
 
 @app.route("/data/types", methods=["GET"])
 def get_types():
-    temp_dir = app.config["UPLOAD_FOLDER"]
+    temp_dir = Path(app.config["UPLOAD_FOLDER"])
 
     crate = ROCrate()
 
-    response_file_path = os.path.join(temp_dir, "response.json")
-    with open(response_file_path, "w") as f:
-        json.dump(list(MAPPING.keys()), f, indent=4)
+    filename = "response.json"
+    filepath = temp_dir / filename
+
+    with filepath.open("w") as file:
+        json.dump(list(MAPPING.keys()), file, indent=4)
 
     crate.add_file(
-        response_file_path,
-        "./response.json",
+        filepath,
+        f"./{filename}",
         properties={
             "@type": "RESPONSE",
         },
     )
 
-    crate_dir = os.path.join(temp_dir, "ro_crate")
+    crate_dir = temp_dir / "ontologies"
     crate.write_zip(crate_dir)
     crate.write(crate_dir)
 
+    zipped_crate_path = crate_dir.with_suffix(".zip")
+
     return send_file(
-        "temp_uploads/ro_crate.zip",
+        zipped_crate_path,
         as_attachment=True,
-        download_name="ro_crate.zip",
+        download_name=zipped_crate_path.name,
     )
 
 
 @app.route("/data/ontology", methods=["GET"])
 def get_objects_by_ontological_type():
     ontology = request.args.get("type")
+
     if not ontology:
         return "Missing ontological type.", 400
-    context = CONTEXT.get(ontology, {})
-    return jsonify(
-        [
-            {
-                **item,
-                "metadata": jsonld.expand({**context, **item["metadata"]})
-                if context.get("@context", None)
-                else item["metadata"],
-            }
+
+    temp_dir = Path(app.config["UPLOAD_FOLDER"])
+
+    crate = ROCrate()
+
+    filename = "response.json"
+    filepath = temp_dir / filename
+
+    with filepath.open("w") as file:
+        objects = [
+            _contextualize_data(item)
             for item in DATA
             if item["ontology"].lower() == ontology.lower()
         ]
+        json.dump(objects, file, indent=4)
+
+    crate.add_file(
+        filepath,
+        f"./{filename}",
+        properties={
+            "@type": "RESPONSE",
+        },
+    )
+
+    crate_dir = temp_dir / "objects_by_ontology"
+    crate.write_zip(crate_dir)
+    crate.write(crate_dir)
+
+    zipped_crate_path = crate_dir.with_suffix(".zip")
+
+    return send_file(
+        zipped_crate_path,
+        as_attachment=True,
+        download_name=zipped_crate_path.name,
     )
 
 
