@@ -9,6 +9,7 @@ from pathlib import Path
 
 import jinja2
 import requests
+from data import CONTEXT, DATA, IDS, MAPPING, PLATFORMS
 from flask import Flask, jsonify, render_template, request, send_file
 from flask_cors import CORS
 from pyld import jsonld
@@ -35,98 +36,10 @@ app.jinja_loader = jinja2.ChoiceLoader(
     ]
 )
 
-METADATA_CONTEXT = {
-    "https://aiida.net/Simulation": {
-        "@context": {},
-    },
-    "https://aiida.net/Workflow": {
-        "@context": {},
-    },
-    "https://schema.org/Protein": {
-        "@context": {},
-    },
-    "https://schema.org/MolecularEntity": {
-        "@context": {
-            "key": {
-                "@id": "https://schema.org/inChIKey",
-                "@type": "xsd:string",
-            },
-            "label": {
-                "@id": "https://schema.org/iupacName",
-                "@type": "xsd:string",
-            },
-            "formula": {
-                "@id": "https://schema.org/molecularFormula",
-                "@type": "xst:string",
-            },
-            "weight": {
-                "@id": "https://schema.org/molecularWeight",
-                "@type": "xsd:float",
-            },
-            "units": {
-                "@id": "https://schema.org/molecularWeightUnits",
-                "@type": "xsd:string",
-            },
-        },
-    },
-}
 
-DATA = [
-    {
-        "id": "SIM-51",
-        "type": "@aiida.Simulation",
-        "title": "Data related to xy",
-        "metadata": {
-            "id": "5235211",
-            "aiida_version": "2.4.3",
-            "creation_parameters": {
-                "entities_starting_set": {
-                    "node": ["0e275ed7-c1ec-4926-b0d0-3b7cc97e9ab2"]
-                },
-                "include_authinfos": False,
-                "include_comments": True,
-            },
-        },
-        "ontology": "https://aiida.net/Simulation",
-    },
-    {
-        "id": "WFML-1",
-        "type": "@aiida.Workflow",
-        "title": "Experiment 1",
-        "metadata": {
-            "uuid": "1e673a08-a0ff-47ad-9a09-52321f6dc2dc",
-            "cmdline_params": ["-i", "aiida.inp"],
-        },
-        "ontology": "https://aiida.net/Workflow",
-    },
-    {
-        "id": "TPMS",
-        "type": "@aiida.Sample",
-        "title": "Tropomyosin",
-        "metadata": {"hasBioPolymerSequence": "GGGTTCTCTATCTCTAAAAGGTGTCAA"},
-        "ontology": "https://schema.org/Protein",
-    },
-    {
-        "id": "M-89",
-        "type": "@aiida.Sample",
-        "title": "Crystal",
-        "metadata": {
-            "key": "ETHNL",
-            "label": "Ethanol",
-            "formula": "C2H5OH",
-            "weight": 46.068,
-            "units": "g/mol",
-        },
-        "ontology": "https://schema.org/MolecularEntity",
-    },
-]
-
-DATA_COPY = deepcopy(DATA)
-
-
-RDM_PLATFORMS = {
-    "openBIS": 5001,
-}
+ORIGINAL_DATA = deepcopy(DATA)
+ORIGINAL_IDS = deepcopy(IDS)
+ORIGINAL_MAPPING = deepcopy(MAPPING)
 
 
 @app.route("/")
@@ -142,7 +55,7 @@ def serve_shared_content(filename):
 
 @app.route("/platforms", methods=["GET"])
 def get_platforms():
-    return jsonify(RDM_PLATFORMS)
+    return jsonify(PLATFORMS)
 
 
 @app.route("/data", methods=["GET"])
@@ -163,9 +76,11 @@ def filter_data():
 
 @app.route("/data/reset", methods=["GET"])
 def reset_data():
-    global DATA
-    DATA = deepcopy(DATA_COPY)
-    return jsonify({"message": "Data imported successfully."}), 200
+    global DATA, IDS, MAPPING
+    DATA = deepcopy(ORIGINAL_DATA)
+    IDS = deepcopy(ORIGINAL_IDS)
+    MAPPING = deepcopy(ORIGINAL_MAPPING)
+    return jsonify({"message": "Data reset successfully."}), 200
 
 
 @app.route("/data/types", methods=["GET"])
@@ -199,11 +114,13 @@ def get_objects_by_ontological_type():
     ontology = request.args.get("type")
     if not ontology:
         return "Missing ontological type.", 400
-    context = METADATA_CONTEXT.get(ontology)
+    context = CONTEXT.get(ontology, {})
     filtered = [
         {
             **item,
-            "metadata": jsonld.expand({**context, **item["metadata"]}),
+            "metadata": jsonld.expand({**context, **item["metadata"]})
+            if context
+            else item["metadata"],
         }
         for item in DATA
         if item["ontology"].lower() == ontology.lower()
@@ -215,16 +132,39 @@ def get_objects_by_ontological_type():
 def import_data():
     try:
         new_data = request.json
-        if any(item["id"] == new_data["id"] for item in DATA):
-            return jsonify({"message": "Item with this ID already exists."}), 409
-        context = METADATA_CONTEXT.get(new_data["ontology"])["@context"]
-        metadata = jsonld.compact(new_data["metadata"], context)
-        metadata.pop("@context")
+
+        if any(item["title"] == new_data["title"] for item in DATA):
+            return jsonify({"message": "The item already exists."}), 409
+
+        ontology = new_data["ontology"]
+        mapping: dict = CONTEXT.get(ontology, {})
+
+        if mapping:
+            object_type = MAPPING[ontology]
+            context = mapping.get("@context", {})
+            if context:
+                metadata = jsonld.compact(new_data["metadata"], context)
+                metadata.pop("@context")
+            else:
+                metadata = new_data["metadata"]
+        else:
+            object_type = "@aiida.Object"
+            MAPPING[ontology] = object_type
+            metadata = new_data["metadata"]
+
+        ids = IDS[object_type]
+        ids["counter"] += 1
+
         new_data = {
-            **new_data,
+            "id": f"{ids['prefix']}-{ids['counter']}",
+            "type": object_type,
+            "title": new_data["title"],
             "metadata": metadata,
+            "ontology": ontology,
         }
+
         DATA.append(new_data)
+
         return jsonify({"message": "Data imported successfully."}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500

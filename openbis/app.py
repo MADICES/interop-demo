@@ -8,12 +8,12 @@ from copy import deepcopy
 from pathlib import Path
 
 import jinja2
+from data import CONTEXT, DATA, IDS, MAPPING, PLATFORMS
 from flask import Flask, jsonify, render_template, request, send_file
 from flask_cors import CORS
+from pyld import jsonld
 from rocrate.rocrate import ROCrate
 from werkzeug.utils import secure_filename
-
-from pyld import jsonld
 
 app = Flask(
     __name__,
@@ -35,102 +35,10 @@ app.jinja_loader = jinja2.ChoiceLoader(
     ]
 )
 
-METADATA_CONTEXT = {
-    "https://openbis.ont.ethz.ch/DataSet": {
-        "@context": {},
-    },
-    "https://openbis.ont.ethz.ch/Experiment": {
-        "@context": {},
-    },
-    "https://schema.org/Protein": {
-        "@context": {},
-    },
-    "https://schema.org/MolecularEntity": {
-        "@context": {
-            "inChIKey": {
-                "@id": "https://schema.org/inChIKey",
-                "@type": "xsd:string",
-            },
-            "iupacName": {
-                "@id": "https://schema.org/iupacName",
-                "@type": "xsd:string",
-            },
-            "molecularFormula": {
-                "@id": "https://schema.org/molecularFormula",
-                "@type": "xst:string",
-            },
-            "molecularWeight": {
-                "@id": "https://schema.org/molecularWeight",
-                "@type": "xsd:float",
-            },
-            "molecularWeightUnits": {
-                "@id": "https://schema.org/molecularWeightUnits",
-                "@type": "xsd:string",
-            },
-        },
-    },
-}
 
-DATA = [
-    {
-        "id": "20240424-750",
-        "type": "@openBIS.Dataset",
-        "title": "Research in Ontology",
-        "metadata": {"info": "1D image"},
-        "ontology": "https://openbis.ont.ethz.ch/DataSet",
-    },
-    {
-        "id": "20240424-751",
-        "type": "@openBIS.Dataset",
-        "title": "Data related to Ontology Research",
-        "metadata": {"info": "2D image"},
-        "ontology": "https://openbis.ont.ethz.ch/DataSet",
-    },
-    {
-        "id": "20240320-1",
-        "type": "@openBIS.Experiment",
-        "title": "Experiment 1",
-        "metadata": {"info": "Experiment on algea"},
-        "ontology": "https://openbis.ont.ethz.ch/Experiment",
-    },
-    {
-        "id": "20240320-2",
-        "type": "@openBIS.Experiment",
-        "title": "Experiment 2",
-        "metadata": None,
-        "ontology": "https://openbis.ont.ethz.ch/Experiment",
-    },
-    {
-        "id": "20240402-1280",
-        "type": "@openBIS.Sample",
-        "title": "Protein",
-        "metadata": {"hasBioPolymerSequence": "AAACCTTTGTACAATG"},
-        "ontology": "https://schema.org/Protein",
-    },
-    {
-        "id": "20240402-1289",
-        "type": "@openBIS.Sample",
-        "title": "Molecule",
-        "metadata": {
-            "inChIKey": "MTHN",
-            "iupacName": "Methane",
-            "molecularFormula": "CH4",
-            "molecularWeight": 16.043,
-            "molecularWeightUnits": "g/mol",
-        },
-        "ontology": "https://schema.org/MolecularEntity",
-    },
-]
-
-DATA_COPY = deepcopy(DATA)
-
-RDM_PLATFORMS = [
-    "AiiDA",
-]
-
-RDM_PLATFORMS = {
-    "AiiDA": 5002,
-}
+ORIGINAL_DATA = deepcopy(DATA)
+ORIGINAL_IDS = deepcopy(IDS)
+ORIGINAL_MAPPING = deepcopy(MAPPING)
 
 
 @app.route("/")
@@ -146,7 +54,7 @@ def serve_shared_content(path):
 
 @app.route("/platforms", methods=["GET"])
 def get_platforms():
-    return jsonify(RDM_PLATFORMS)
+    return jsonify(PLATFORMS)
 
 
 @app.route("/data", methods=["GET"])
@@ -167,9 +75,11 @@ def filter_data():
 
 @app.route("/data/reset", methods=["GET"])
 def reset_data():
-    global DATA
-    DATA = deepcopy(DATA_COPY)
-    return jsonify({"message": "Data imported successfully."}), 200
+    global DATA, IDS, MAPPING
+    DATA = deepcopy(ORIGINAL_DATA)
+    IDS = deepcopy(ORIGINAL_IDS)
+    MAPPING = deepcopy(ORIGINAL_MAPPING)
+    return jsonify({"message": "Data reset successfully."}), 200
 
 
 @app.route("/data/types", methods=["GET"])
@@ -203,11 +113,13 @@ def get_objects_by_ontological_type():
     ontology = request.args.get("type")
     if not ontology:
         return "Missing ontological type.", 400
-    context = METADATA_CONTEXT.get(ontology)
+    context = CONTEXT.get(ontology, {})
     filtered = [
         {
             **item,
-            "metadata": jsonld.expand({**context, **item["metadata"]}),
+            "metadata": jsonld.expand({**context, **item["metadata"]})
+            if context
+            else item["metadata"],
         }
         for item in DATA
         if item["ontology"].lower() == ontology.lower()
@@ -219,16 +131,39 @@ def get_objects_by_ontological_type():
 def import_data():
     try:
         new_data = request.json
-        if any(item["id"] == new_data["id"] for item in DATA):
-            return jsonify({"message": "Item with this ID already exists."}), 409
-        context = METADATA_CONTEXT.get(new_data["ontology"])["@context"]
-        metadata = jsonld.compact(new_data["metadata"], context)
-        metadata.pop("@context")
+
+        if any(item["title"] == new_data["title"] for item in DATA):
+            return jsonify({"message": "The item already exists."}), 409
+
+        ontology = new_data["ontology"]
+        mapping: dict = CONTEXT.get(ontology, {})
+
+        if mapping:
+            object_type = MAPPING[ontology]
+            context = mapping.get("@context", {})
+            if context:
+                metadata = jsonld.compact(new_data["metadata"], context)
+                metadata.pop("@context")
+            else:
+                metadata = new_data["metadata"]
+        else:
+            object_type = "@aiida.Object"
+            MAPPING[ontology] = object_type
+            metadata = new_data["metadata"]
+
+        ids = IDS[object_type]
+        ids["counter"] += 1
+
         new_data = {
-            **new_data,
+            "id": f"{ids['prefix']}-{ids['counter']}",
+            "type": object_type,
+            "title": new_data["title"],
             "metadata": metadata,
+            "ontology": ontology,
         }
+
         DATA.append(new_data)
+
         return jsonify({"message": "Data imported successfully."}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
