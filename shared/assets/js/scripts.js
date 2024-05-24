@@ -195,11 +195,6 @@ function refreshData() {
   hideMetadata();
 }
 
-function hideMetadata() {
-  const metadata = document.getElementById("metadata");
-  metadata.textContent = "";
-}
-
 function fetchFilteredData() {
   const selectedType = document.getElementById("typeSelect").value;
   if (selectedType) {
@@ -220,11 +215,46 @@ function fetchFilteredData() {
 }
 
 function updateTable(data) {
+  const createMetadataButton = (item) => {
+    const resetOtherMetadataButtons = () => {
+      const buttons = document.getElementsByClassName("metadata-toggler");
+      Array.from(buttons).forEach((b) => {
+        if (b !== button) b.innerHTML = "+";
+      });
+    };
+
+    const metadata = document
+      .getElementById("metadata")
+      .getElementsByTagName("pre")[0];
+    const context = document
+      .getElementById("context")
+      .getElementsByTagName("pre")[0];
+
+    const button = document.createElement("button");
+    button.innerHTML = "+";
+    button.className = "btn btn-outline-secondary metadata-toggler";
+    button.addEventListener("click", () => {
+      metadata.textContent = "";
+      if (button.innerHTML == "+") {
+        resetOtherMetadataButtons();
+        button.innerHTML = "-";
+        metadata.textContent = JSON.stringify(item["metadata"], null, 2);
+        context.textContent = JSON.stringify(item["@context"], null, 2);
+      } else {
+        button.innerHTML = "+";
+        metadata.textContent = "";
+        context.textContent = "";
+      }
+    });
+    return button;
+  };
+
   const tableBody = document
     .getElementById("dataTable")
     .getElementsByTagName("tbody")[0];
-  const metadata = document.getElementById("metadata");
+
   tableBody.innerHTML = "";
+
   data.forEach((item) => {
     const row = tableBody.insertRow();
     const cellId = row.insertCell(0);
@@ -236,40 +266,21 @@ function updateTable(data) {
     cellType.textContent = item.type;
     cellTitle.textContent = item.title;
     cellOnt.textContent = item.ontology;
-    const button = createMetadataButton(metadata, item);
+    const button = createMetadataButton(item);
     cellMetadata.appendChild(button);
     cellMetadata.className = "text-center";
   });
 }
 
-function createMetadataButton(metadata, item) {
-  const showMetadata = (item, metadata) => {
-    button.innerHTML = "-";
-    const pre = document.createElement("pre");
-    pre.textContent = JSON.stringify(item.metadata, null, 2);
-    metadata.appendChild(pre);
-  };
-
-  const resetOtherMetadataButtons = () => {
-    const buttons = document.getElementsByClassName("metadata-toggler");
-    Array.from(buttons).forEach((b) => {
-      if (b !== button) b.innerHTML = "+";
-    });
-  };
-
-  const button = document.createElement("button");
-  button.innerHTML = "+";
-  button.className = "btn btn-outline-secondary metadata-toggler";
-  button.addEventListener("click", () => {
-    metadata.innerHTML = "";
-    if (button.innerHTML == "+") {
-      showMetadata(item, metadata);
-      resetOtherMetadataButtons();
-    } else {
-      button.innerHTML = "+";
-    }
-  });
-  return button;
+function hideMetadata() {
+  const metadata = document
+    .getElementById("metadata")
+    .getElementsByTagName("pre")[0];
+  const context = document
+    .getElementById("context")
+    .getElementsByTagName("pre")[0];
+  metadata.textContent = "";
+  context.textContent = "";
 }
 
 function uploadROCrate() {

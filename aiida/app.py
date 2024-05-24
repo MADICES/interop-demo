@@ -60,18 +60,30 @@ def get_platforms():
 
 @app.route("/data", methods=["GET"])
 def get_data():
-    return jsonify(DATA)
+    return jsonify([_contextualize_data(item) for item in DATA])
 
 
 @app.route("/data/filter", methods=["GET"])
 def filter_data():
     filter_type = request.args.get("type")
+
     if not filter_type:
         return "Type parameter is required for filtering.", 400
-    filtered_data = [
-        item for item in DATA if item["type"].lower() == filter_type.lower()
-    ]
-    return jsonify(filtered_data)
+
+    return jsonify(
+        [
+            _contextualize_data(item)
+            for item in DATA
+            if item["type"].lower() == filter_type.lower()
+        ]
+    )
+
+
+def _contextualize_data(item):
+    return {
+        **CONTEXT.get(item["ontology"], {}),
+        **item,
+    }
 
 
 @app.route("/data/reset", methods=["GET"])

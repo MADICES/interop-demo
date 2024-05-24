@@ -14,3 +14,8 @@
 .metadata-toggler {
   width: 40px;
 }
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
