@@ -200,11 +200,11 @@ def import_data():
             CONTEXT[ontology] = {"@context": new_data["@context"]}
             metadata = new_data["metadata"]
 
-        ids = IDS[object_type]
-        ids["counter"] += 1
+        object_id = IDS[object_type]
+        object_id["counter"] += 1
 
         new_data = {
-            "id": f"{ids['prefix']}-{ids['counter']}",
+            "id": f"{object_id['prefix']}-{object_id['counter']}",
             "type": object_type,
             "title": new_data["title"],
             "metadata": metadata,

@@ -33,7 +33,7 @@ function startSimulation() {
     return;
   }
 
-  fetch(`/data/start_simulation?id=${encodeURIComponent(selectedObjectId)}`, {
+  fetch(`/data/run_simulation?id=${encodeURIComponent(selectedObjectId)}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -48,28 +48,11 @@ function startSimulation() {
     })
     .then((response) => {
       fetchData();
-      displayNewObject(response);
     })
     .catch((error) => {
+      console.log(error);
       handleError("Failed to fetch or process data.");
     });
-}
-
-function displayNewObject(newObject) {
-  const displayArea = document.getElementById("sim_message");
-  displayArea.classList.remove("d-none");
-  displayArea.textContent =
-    "Updated Object with new simulation: " + JSON.stringify(newObject, null, 2);
-
-  let exportButton = document.getElementById("exportButton");
-  if (!exportButton) {
-    exportButton = document.createElement("button");
-    exportButton.id = "exportButton";
-    exportButton.textContent = "Export Data";
-    exportButton.className = "btn btn-success mt-3";
-    exportButton.onclick = () => exportData(newObject);
-    displayArea.parentNode.insertBefore(exportButton, displayArea.nextSibling);
-  }
 }
 
 function exportData(newObject) {

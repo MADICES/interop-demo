@@ -97,7 +97,7 @@ DATA = [
             "aiida_version": "2.4.3",
             "creation_parameters": {
                 "entities_starting_set": {
-                    "node": ["0e275ed7-c1ec-4926-b0d0-3b7cc97e9ab2"]
+                    "node": "0e275ed7-c1ec-4926-b0d0-3b7cc97e9ab2",
                 },
                 "include_authinfos": False,
                 "include_comments": True,

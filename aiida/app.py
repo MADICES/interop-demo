@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import time
+import uuid
 import zipfile
 from copy import deepcopy
 from pathlib import Path
@@ -201,11 +202,11 @@ def import_data():
             CONTEXT[ontology] = {"@context": new_data["@context"]}
             metadata = new_data["metadata"]
 
-        ids = IDS[object_type]
-        ids["counter"] += 1
+        object_id = IDS[object_type]
+        object_id["counter"] += 1
 
         new_data = {
-            "id": f"{ids['prefix']}-{ids['counter']}",
+            "id": f"{object_id['prefix']}-{object_id['counter']}",
             "type": object_type,
             "title": new_data["title"],
             "metadata": metadata,
@@ -357,49 +358,47 @@ def download():
     return response
 
 
-@app.route("/data/start_simulation", methods=["GET"])
-def start_simulation():
+@app.route("/data/run_simulation", methods=["GET"])
+def run_simulation():
     try:
         selected_object_id = request.args.get("id")
-        selected_object_index = next(
-            (
-                index
-                for index, item in enumerate(DATA)
-                if item["id"] == selected_object_id
-            ),
+        selected_object = next(
+            (item for item in DATA if item["id"] == selected_object_id),
             None,
         )
 
-        if selected_object_index is None:
+        if selected_object is None:
             return jsonify({"message": "Selected object not found"}), 404
 
-        # Reference the selected object directly for easier modification
-        selected_object = DATA[selected_object_index]
-        # Create a new simulation object
+        object_type = "@aiida.Simulation"
+        object_id = IDS[object_type]
+        object_id["counter"] += 1
+
         new_simulation = {
-            "id": f"SIM-{int(time.time())}",  # Generate a new unique ID based on the current time
-            "type": "@aiida.Simulation",
-            "title": "New Simulation on " + selected_object_id,
+            "id": f"{object_id['prefix']}-{object_id['counter']}",
+            "type": object_type,
+            "title": f"New Simulation on {selected_object_id}",
             "metadata": {
                 "creation_parameters": {
-                    "entities_starting_set": {
-                        "node": ["0e275ed7-c1ec-4926-b0d0-3b7cc97e9ab2"]
-                    },
+                    "entities_starting_set": {"node": str(uuid.uuid1())},
                     "include_authinfos": False,
                     "include_comments": True,
                 },
                 "aiida_version": "2.4.3",
+                "has_parent": selected_object_id,
             },
             "ontology": "https://aiida.net/Simulation",
         }
 
         if "has_child" not in selected_object["metadata"]:
             selected_object["metadata"]["has_child"] = []
-        selected_object["metadata"]["has_child"].append(new_simulation)
 
-        DATA[selected_object_index] = selected_object
+        simulations: list = selected_object["metadata"]["has_child"]
+        simulations.append(new_simulation["id"])
 
-        return jsonify(selected_object), 201
+        DATA.append(new_simulation)
+
+        return jsonify(selected_object["id"]), 201
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
