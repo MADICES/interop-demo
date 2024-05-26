@@ -1,6 +1,26 @@
 <div id="cratePort" class="container">
   <div class="col-12">
     <h1 class="mb-4">Crate Port</h1>
+    <div id="crateSection">
+      <div class="d-flex align-items-center mb-3">
+        <div class="form-label">
+          <label>Crates:</label>
+        </div>
+        <select name="crateSelect" id="crateSelect" class="form-select me-2">
+          <option value="">Select a crate</option>
+        </select>
+        <button
+          onclick="showCrate()"
+          class="btn btn-primary form-button"
+          disabled
+        >
+          View
+        </button>
+      </div>
+      <div id="crateView" class="col-12 d-none border p-3 mb-3">
+        <pre></pre>
+      </div>
+    </div>
     <div id="platformSection" class="d-flex align-items-center mb-3">
       <div class="form-label">
         <label>Platform:</label>

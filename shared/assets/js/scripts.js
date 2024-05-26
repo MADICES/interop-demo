@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   fetchData();
+  fetchCrates();
   fetchPlatforms();
 });
 
@@ -17,6 +18,9 @@ document.getElementById("crateSelect").addEventListener("change", () => {
   const select = document.getElementById("crateSelect");
   const button = select.nextElementSibling;
   button.disabled = !select.value;
+  if (!select.value) {
+    hideCrateView();
+  }
 });
 
 document.getElementById("platformTypeSelect").addEventListener("change", () => {
@@ -33,6 +37,44 @@ document.getElementById("exportSelect").addEventListener("change", () => {
   const button = select.nextElementSibling;
   button.disabled = !select.value;
 });
+
+function fetchCrates() {
+  fetch("/crates")
+    .then((response) => response.json())
+    .then((data) => {
+      const select = document.getElementById("crateSelect");
+      select.innerHTML = "";
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "Select a crate";
+      select.appendChild(option);
+      data.forEach((label) => {
+        const option = document.createElement("option");
+        option.value = label;
+        option.textContent = label;
+        select.appendChild(option);
+      });
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      alert("Failed to fetch crates.");
+    });
+}
+
+function showCrate() {
+  const name = document.getElementById("crateSelect").value;
+  fetch(`/crate?name=${encodeURIComponent(name)}`)
+    .then((response) => response.json())
+    .then((data) => {
+      const view = document.getElementById("crateView");
+      view.classList.remove("d-none");
+      view.firstElementChild.textContent = JSON.stringify(data, null, 2);
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      alert("Failed to fetch crate.");
+    });
+}
 
 function fetchPlatforms() {
   fetch("/platforms")
@@ -98,6 +140,7 @@ function fetchPlatformTypes() {
       const data = JSON.parse(jsonString);
       updateTypeSelection(data);
       showPortSections();
+      fetchCrates();
     })
     .catch((error) => {
       console.error("Error:", error);
@@ -140,6 +183,7 @@ function fetchPlatformData() {
       .then((jsonString) => {
         const data = JSON.parse(jsonString);
         updatePlatformDataList(data);
+        fetchCrates();
       })
       .catch((error) => {
         console.error("Error:", error);
@@ -234,7 +278,10 @@ function exportData() {
         throw new Error("Failed to export data.");
       }
     })
-    .then((data) => alert("Successfully exported data."))
+    .then((data) => {
+      fetchCrates();
+      alert("Successfully exported data.");
+    })
     .catch((error) => {
       console.error("Error:", error);
       alert("An error occurred during data export.");
@@ -245,6 +292,7 @@ function resetData() {
   fetch("/data/reset").then(
     () => {
       fetchData();
+      fetchCrates();
       hideMetadata();
       hideError();
     },
@@ -359,6 +407,11 @@ function updateTable(data) {
 function hideMetadata() {
   const infoSection = document.getElementById("infoSection");
   infoSection.classList.add("d-none");
+}
+
+function hideCrateView() {
+  const view = document.getElementById("crateView");
+  view.classList.add("d-none");
 }
 
 function uploadROCrate() {

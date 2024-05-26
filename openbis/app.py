@@ -24,8 +24,8 @@ app = Flask(
 
 CORS(app)
 
-app.config["UPLOAD_FOLDER"] = "temp_uploads/"
-app.config["RO_CRATE_FOLDER"] = "ro_crate/"
+app.config["RO_CRATE_FOLDER"] = "temp_uploads/"
+app.config["RO_CRATE_FOLDER"] = "ro_crates/"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 app.config["SHARED_PATH"] = "../shared"
 
@@ -55,6 +55,21 @@ def serve_shared_content(path):
     return send_file(file)
 
 
+@app.route("/crates")
+def get_crates():
+    return jsonify(
+        [crate.name for crate in Path(app.config["RO_CRATE_FOLDER"]).iterdir()]
+    )
+
+
+@app.route("/crate", methods=["GET"])
+def get_crate_content():
+    name = request.args.get("name")
+    path = Path(app.config["RO_CRATE_FOLDER"]) / name
+    crate = ROCrate(path)
+    return jsonify(crate.metadata.generate())
+
+
 @app.route("/platforms", methods=["GET"])
 def get_platforms():
     return jsonify(PLATFORMS)
@@ -67,18 +82,15 @@ def get_data():
 
 @app.route("/data/filter", methods=["GET"])
 def filter_data():
-    filter_type = request.args.get("type")
-
-    if not filter_type:
-        return "Type parameter is required for filtering.", 400
-
     return jsonify(
         [
             _contextualize(item)
             for item in DATA
             if item["type"].lower() == filter_type.lower()
         ]
-    )
+    ) if (
+        filter_type := request.args.get("type")
+    ) else "Type parameter is required for filtering.", 400
 
 
 @app.route("/data/reset", methods=["GET"])
@@ -88,15 +100,15 @@ def reset_data():
     IDS = deepcopy(ORIGINAL_IDS)
     OBJECT_MAPPING = deepcopy(ORIGINAL_OBJECT_MAPPING)
     KEY_MAPPING = deepcopy(ORIGINAL_KEY_MAPPING)
+    shutil.rmtree(app.config["RO_CRATE_FOLDER"])
+    Path(app.config["RO_CRATE_FOLDER"]).mkdir()
     return jsonify({"message": "Data reset successfully."}), 200
 
 
 @app.route("/data/types", methods=["GET"])
 def get_types():
     types = list(OBJECT_MAPPING.keys())
-
-    temp_dir = Path(app.config["UPLOAD_FOLDER"])
-
+    temp_dir = Path(app.config["RO_CRATE_FOLDER"])
     crate = ROCrate()
     content = json.dumps(types, indent=4)
     file = BytesIO(content.encode())
@@ -107,13 +119,9 @@ def get_types():
             "@type": "RESPONSE",
         },
     )
-
     crate_dir = temp_dir / "ontologies"
     crate.write_zip(crate_dir)
-    crate.write(crate_dir)
-
     zipped_crate_path = crate_dir.with_suffix(".zip")
-
     return send_file(
         zipped_crate_path,
         as_attachment=True,
@@ -123,19 +131,14 @@ def get_types():
 
 @app.route("/data/ontology", methods=["GET"])
 def get_objects_by_ontological_type():
-    ontology = request.args.get("type")
-
-    if not ontology:
+    if not (ontology := request.args.get("type")):
         return "Missing ontological type.", 400
-
     objects = [
         _contextualize(item)
         for item in DATA
         if item["ontology"].lower() == ontology.lower()
     ]
-
-    temp_dir = Path(app.config["UPLOAD_FOLDER"])
-
+    temp_dir = Path(app.config["RO_CRATE_FOLDER"])
     crate = ROCrate()
     content = json.dumps(objects, indent=4)
     file = BytesIO(content.encode())
@@ -146,13 +149,9 @@ def get_objects_by_ontological_type():
             "@type": "RESPONSE",
         },
     )
-
     crate_dir = temp_dir / "objects_by_ontology"
     crate.write_zip(crate_dir)
-    crate.write(crate_dir)
-
     zipped_crate_path = crate_dir.with_suffix(".zip")
-
     return send_file(
         zipped_crate_path,
         as_attachment=True,
@@ -190,18 +189,14 @@ def import_data():
 @app.route("/data/export", methods=["POST"])
 def export_data():
     port = request.args.get("port")
-
     object_id = request.json
     sample = next(
         (_contextualize(item) for item in DATA if item["id"] == object_id),
         None,
     )
-
-    temp_dir = Path(app.config["UPLOAD_FOLDER"])
+    temp_dir = Path(app.config["RO_CRATE_FOLDER"])
     temp_dir.mkdir(exist_ok=True)
-
     crate = ROCrate()
-
     content = json.dumps(sample, indent=4)
     file = BytesIO(content.encode())
     crate.add_file(
@@ -211,18 +206,14 @@ def export_data():
             "@type": "EXPORT",
         },
     )
-
     crate_dir = temp_dir / "export"
     crate.write_zip(crate_dir)
-    crate.write(crate_dir)
-
     with crate_dir.with_suffix(".zip").open("rb") as file:
         filename = crate_dir.with_suffix(".zip").name
         response = requests.post(
             f"http://localhost:{port}/receive_zip?port={PORT}",
             files={"file": (filename, file, "application/zip")},
         )
-
     if response.status_code == 200:
         return jsonify(
             {
@@ -238,20 +229,15 @@ def export_data():
 def receive_zip():
     if "file" not in request.files or not (file := request.files["file"]):
         return jsonify({"message": "Missing file"}), 400
-
     if file.filename == "":
         return jsonify({"message": "No selected file"}), 400
-
     if file.filename.endswith(".zip"):
         try:
             byte_stream = BytesIO(file.read())
             zip_file = zipfile.ZipFile(byte_stream, "r")
-
             with zip_file.open("export.json") as f:
                 data: dict = json.load(f)
-
             object_type, metadata = _transform_against_context(data)
-
             if metadata.get("wasImported", {}).get("from") == PORT:
                 local_id = metadata["wasImported"]["with_id"]  # type: ignore
                 local_object: dict = next(
@@ -280,7 +266,6 @@ def receive_zip():
                     "ontology": data["ontology"],
                 }
                 DATA.append(new_data)
-
             return jsonify({"message": "Zip file processed successfully"}), 200
         except zipfile.BadZipFile:
             return jsonify({"message": "Invalid zip file"}), 400
