@@ -1,24 +1,29 @@
 <div id="cratePort" class="container">
   <div class="col-12">
     <h1 class="mb-4">Crate Port</h1>
-    <div id="platformSection" class="mb-3 d-flex align-items-center">
+    <div id="platformSection" class="d-flex align-items-center mb-3">
       <div class="form-label">
         <label>Platform:</label>
       </div>
-      <select name="platformSelect" id="platformSelect" class="form-select me-2">
+      <select
+        name="platformSelect"
+        id="platformSelect"
+        class="form-select me-2"
+      >
         <option value="">Select a platform</option>
       </select>
       <button
         onclick="fetchPlatformTypes()"
-        id="connectButton"
         class="btn btn-primary form-button"
         disabled
       >
         Connect
       </button>
     </div>
-    <div id="portSteps" class="mb-3"></div>
-    <div id="filterSection" class="mb-3 d-flex d-none align-items-center">
+    <div id="portSections" class="d-none">
+      <div id="importSection" class="border">
+        <h2 class="mb-4">Imports</h2>
+        <div class="d-flex align-items-center mb-3">
       <div class="form-label">
         <label>Ontology:</label>
       </div>
@@ -31,7 +36,6 @@
       </select>
       <button
         onclick="fetchPlatformData()"
-        id="fetchButton"
         class="btn btn-success form-button"
         disabled
       >
@@ -39,5 +43,27 @@
       </button>
     </div>
     <ul id="platformDataList" class="list-group mt-3"></ul>
+      </div>
+      <div id="exportSection" class="border">
+        <h2 class="mb-4">Exports</h2>
+        <div class="d-flex align-items-center mb-3">
+          <div class="form-label">
+            <label>Samples:</label>
+          </div>
+          <select
+            name="exportSelect"
+            id="exportSelect"
+            class="form-select me-2"
+          ></select>
+          <button
+            onclick="exportData()"
+            class="btn btn-success form-button"
+            disabled
+          >
+            Export
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

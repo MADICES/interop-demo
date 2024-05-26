@@ -15,6 +15,12 @@
   width: 40px;
 }
 
+#importSection,
+#exportSection {
+  margin: 1em -1em;
+  padding: 1em;
+}
+
 pre {
   margin: 0;
   white-space: pre-wrap;

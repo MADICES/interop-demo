@@ -1,25 +1,37 @@
 document.addEventListener("DOMContentLoaded", () => {
-  fetchPlatforms();
   fetchData();
+  fetchPlatforms();
 });
 
 document.getElementById("platformSelect").addEventListener("change", () => {
-  const selectedPlatform = platformSelect.value;
-  const connectButton = document.getElementById("connectButton");
-  connectButton.disabled = !selectedPlatform;
-  if (!selectedPlatform) {
-    hideFilterSection();
+  const select = document.getElementById("platformSelect");
+  const button = select.nextElementSibling;
+  button.disabled = !select.value;
+  if (!select.value) {
+    hidePortSections();
     updatePlatformDataList([]);
   }
 });
 
+document.getElementById("crateSelect").addEventListener("change", () => {
+  const select = document.getElementById("crateSelect");
+  const button = select.nextElementSibling;
+  button.disabled = !select.value;
+});
+
 document.getElementById("platformTypeSelect").addEventListener("change", () => {
-  const selectedType = platformTypeSelect.value;
-  const fetchButton = document.getElementById("fetchButton");
-  fetchButton.disabled = !selectedType;
-  if (!selectedType) {
+  const select = document.getElementById("platformTypeSelect");
+  const button = select.nextElementSibling;
+  button.disabled = !select.value;
+  if (!select.value) {
     updatePlatformDataList([]);
   }
+});
+
+document.getElementById("exportSelect").addEventListener("change", () => {
+  const select = document.getElementById("exportSelect");
+  const button = select.nextElementSibling;
+  button.disabled = !select.value;
 });
 
 function fetchPlatforms() {
@@ -85,10 +97,10 @@ function fetchPlatformTypes() {
     .then((jsonString) => {
       const data = JSON.parse(jsonString);
       updateTypeSelection(data);
-      showFilterSection();
+      showPortSections();
     })
     .catch((error) => {
-      console.log(error);
+      console.error("Error:", error);
       handleError("Failed to fetch or process data.");
     });
 }
@@ -130,12 +142,29 @@ function fetchPlatformData() {
         updatePlatformDataList(data);
       })
       .catch((error) => {
-        console.log(error);
+        console.error("Error:", error);
         handleError("Failed to fetch filtered data.");
       });
   } else {
     alert("Please select a type to filter by!");
   }
+}
+
+function populateExportSamples(data) {
+  const samplesList = data.filter((item) => item.type.includes("Sample"));
+  const select = document.getElementById("exportSelect");
+  select.nextElementSibling.disabled = true;
+  select.innerHTML = "";
+  const option = document.createElement("option");
+  option.value = "";
+  option.textContent = "Select a sample";
+  select.appendChild(option);
+  samplesList.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.id; // Store item as a string in the value
+    option.textContent = item.id + " - " + item.title;
+    select.appendChild(option);
+  });
 }
 
 function updatePlatformDataList(data) {
@@ -157,7 +186,6 @@ function updatePlatformDataList(data) {
     button.textContent = "Import Data";
     button.onclick = () => {
       importData(item);
-      // button.disabled = true;
     };
     li.appendChild(button);
     list.appendChild(li);
@@ -186,6 +214,30 @@ function importData(item) {
     .catch((error) => {
       console.error("Error:", error);
       alert("An error occurred while importing data.");
+    });
+}
+
+function exportData() {
+  const selected_id = document.getElementById("exportSelect").value;
+  const port = document.getElementById("platformSelect").value;
+  fetch(`/data/export?port=${port}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(selected_id),
+  })
+    .then((response) => {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw new Error("Failed to export data.");
+      }
+    })
+    .then((data) => alert("Successfully exported data."))
+    .catch((error) => {
+      console.error("Error:", error);
+      alert("An error occurred during data export.");
     });
 }
 
@@ -234,7 +286,10 @@ function fetchFilteredData() {
           handleError("No data found for the selected type.");
         }
       })
-      .catch((error) => handleError("Failed to fetch filtered data."));
+      .catch((error) => {
+        console.error("Error:", error);
+        handleError("Failed to fetch filtered data.");
+      });
   } else {
     fetchData();
   }
@@ -334,14 +389,14 @@ function uploadROCrate() {
   }
 }
 
-function showFilterSection() {
-  const filterSection = document.getElementById("filterSection");
-  filterSection.classList.remove("d-none");
+function showPortSections() {
+  const portSections = document.getElementById("portSections");
+  portSections.classList.remove("d-none");
 }
 
-function hideFilterSection() {
-  const filterSection = document.getElementById("filterSection");
-  filterSection.classList.add("d-none");
+function hidePortSections() {
+  const portSections = document.getElementById("portSections");
+  portSections.classList.add("d-none");
 }
 
 function handleError(message) {

@@ -4,6 +4,7 @@ function fetchData() {
     .then((data) => {
       updateTable(data);
       populateTypes(data);
+      populateExportSamples(data);
     })
     .catch((error) => handleError("Failed to fetch data."));
 }

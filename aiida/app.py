@@ -186,6 +186,107 @@ def import_data():
         return jsonify({"message": str(e)}), 500
 
 
+@app.route("/data/export", methods=["POST"])
+def export_data():
+    port = request.args.get("port")
+
+    object_id = request.json
+    sample = next(
+        (_contextualize(item) for item in DATA if item["id"] == object_id),
+        None,
+    )
+
+    temp_dir = Path(app.config["UPLOAD_FOLDER"])
+    temp_dir.mkdir(exist_ok=True)
+
+    crate = ROCrate()
+
+    content = json.dumps(sample, indent=4)
+    file = BytesIO(content.encode())
+    crate.add_file(
+        file,
+        "./export.json",
+        properties={
+            "@type": "EXPORT",
+        },
+    )
+
+    crate_dir = temp_dir / "export"
+    crate.write_zip(crate_dir)
+    crate.write(crate_dir)
+
+    with crate_dir.with_suffix(".zip").open("rb") as file:
+        filename = crate_dir.with_suffix(".zip").name
+        response = requests.post(
+            f"http://localhost:{port}/receive_zip?port={PORT}",
+            files={"file": (filename, file, "application/zip")},
+        )
+
+    if response.status_code == 200:
+        return jsonify(
+            {
+                "message": "Data sent to openBIS successfully",
+                "responseFromOpenBIS": response.json(),
+            }
+        ), 200
+    else:
+        return jsonify({"message": "Failed to send data to openBIS"}), 500
+
+
+@app.route("/receive_zip", methods=["POST"])
+def receive_zip():
+    if "file" not in request.files or not (file := request.files["file"]):
+        return jsonify({"message": "Missing file"}), 400
+
+    if file.filename == "":
+        return jsonify({"message": "No selected file"}), 400
+
+    if file.filename.endswith(".zip"):
+        try:
+            byte_stream = BytesIO(file.read())
+            zip_file = zipfile.ZipFile(byte_stream, "r")
+
+            with zip_file.open("export.json") as f:
+                data: dict = json.load(f)
+
+            object_type, metadata = _transform_against_context(data)
+
+            if metadata.get("wasImported", {}).get("from") == PORT:
+                local_id = metadata["wasImported"]["with_id"]  # type: ignore
+                local_object: dict = next(
+                    filter(lambda item: item["id"] == local_id, DATA),
+                    None,
+                )
+                if not local_object:
+                    return jsonify(
+                        {"message": "The item was not found in the local database."}
+                    ), 404
+                metadata.pop("wasImported")
+                local_object["metadata"].update(metadata)
+            else:
+                port = request.args.get("port")
+                metadata["was_imported"] = {  # type: ignore
+                    "from": int(port),
+                    "with_id": data["id"],
+                }
+                object_id = IDS[object_type]
+                object_id["counter"] += 1
+                new_data = {
+                    "id": f"{object_id['prefix']}-{object_id['counter']}",
+                    "type": object_type,
+                    "title": data["title"],
+                    "metadata": metadata,
+                    "ontology": data["ontology"],
+                }
+                DATA.append(new_data)
+
+            return jsonify({"message": "Zip file processed successfully"}), 200
+        except zipfile.BadZipFile:
+            return jsonify({"message": "Invalid zip file"}), 400
+    else:
+        return jsonify({"message": "Unsupported file type"}), 400
+
+
 @app.route("/data/run_simulation", methods=["GET"])
 def run_simulation():
     try:
@@ -359,101 +460,6 @@ def upload_file():
                 "type": file_type,
             }
         ), 200
-
-
-@app.route("/export", methods=["GET"])
-def export_data():
-    crate = ROCrate()
-    uploads_dir = app.config["UPLOAD_FOLDER"]
-    if not os.path.exists(uploads_dir):
-        os.makedirs(uploads_dir)
-
-    # Adding all files from the uploads directory to the RO-Crate
-    for filename in os.listdir(uploads_dir):
-        if not filename.endswith(".type"):
-            file_path = os.path.join(uploads_dir, filename)
-            type_path = f"{file_path}.type"
-            if os.path.exists(type_path):
-                with open(type_path, "r") as type_file:
-                    file_type = type_file.read().strip()
-                crate.add_file(file_path, properties={"@type": file_type})
-
-    output_dir = app.config["RO_CRATE_FOLDER"]
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    crate.write_zip(output_dir)
-
-    # Clean up uploads directory after creating the RO-Crate
-    # shutil.rmtree(uploads_dir)
-    # os.makedirs(uploads_dir)  # Recreate the directory for future uploads
-
-    # Optionally, list all files in the crate
-    file_paths = [
-        os.path.join(root, file)
-        for root, dirs, files in os.walk(output_dir)
-        for file in files
-    ]
-
-    return jsonify(
-        {"message": "RO-Crate prepared for download.", "file_paths": file_paths}
-    )
-
-
-@app.route("/api/export", methods=["POST"])
-def send_data():
-    objectToExport = request.json
-    temp_dir = app.config["RO_CRATE_FOLDER"]
-    if not os.path.exists(temp_dir):
-        os.makedirs(temp_dir)
-
-    crate = ROCrate()
-
-    # Create the JSON content
-    response_file_path = os.path.join(temp_dir, "query.json")
-    with open(response_file_path, "w") as f:
-        json.dump(objectToExport, f, indent=4)
-
-    # Add the JSON file to the crate
-    crate.add_file(response_file_path, "./query.json", properties={"@type": "PUT"})
-
-    # Write the crate to the temporary directory
-    crate_dir = os.path.join(temp_dir, "ro_crate")
-    crate_path = crate.write_zip(crate_dir)
-    crate.write(crate_dir)
-
-    # shutil.rmtree(temp_dir)
-
-    # url = 'http://localhost:5001/receive'
-    # response = requests.post(url, json=crate)
-
-    # Create a zip file in memory
-    """ memory_file = io.BytesIO()
-    with zipfile.ZipFile(memory_file, 'w') as zf:
-        for e in crate.get_entities():
-            print(e)
-            if(e.type != "Dataset"):
-                # Adding a file named 'data.json' with content 'data'
-                zf.write(e.id)
-
-    # Important: move the cursor back to the beginning of the BytesIO buffer
-    memory_file.seek(0) """
-
-    url = "http://localhost:5001/receive_zip"
-
-    files = {"file": ("filename.zip", open(crate_path, "rb"), "application/zip")}
-    # files = {'file': ('ro_crate.zip', memory_file, 'application/zip')}
-
-    response = requests.post(url, files=files)
-
-    if response.status_code == 200:
-        return jsonify(
-            {
-                "message": "Data sent to openBIS successfully",
-                "responseFromopenBIS": response.json(),
-            }
-        ), 200
-    else:
-        return jsonify({"message": "Failed to send data to openBIS"}), 500
 
 
 if __name__ == "__main__":
