@@ -10,7 +10,7 @@ from pathlib import Path
 
 import jinja2
 import requests
-from data import CONTEXT, DATA, IDS, MAPPING, PLATFORMS
+from data import CONTEXT, DATA, IDS, KEY_MAPPING, OBJECT_MAPPING, PLATFORMS
 from flask import Flask, jsonify, render_template, request, send_file
 from flask_cors import CORS
 from pyld import jsonld
@@ -41,7 +41,8 @@ PORT = 5002
 
 ORIGINAL_DATA = deepcopy(DATA)
 ORIGINAL_IDS = deepcopy(IDS)
-ORIGINAL_MAPPING = deepcopy(MAPPING)
+ORIGINAL_OBJECT_MAPPING = deepcopy(OBJECT_MAPPING)
+ORIGINAL_KEY_MAPPING = deepcopy(KEY_MAPPING)
 
 
 @app.route("/")
@@ -83,16 +84,17 @@ def filter_data():
 
 @app.route("/data/reset", methods=["GET"])
 def reset_data():
-    global DATA, IDS, MAPPING
+    global DATA, IDS, OBJECT_MAPPING, KEY_MAPPING
     DATA = deepcopy(ORIGINAL_DATA)
     IDS = deepcopy(ORIGINAL_IDS)
-    MAPPING = deepcopy(ORIGINAL_MAPPING)
+    OBJECT_MAPPING = deepcopy(ORIGINAL_OBJECT_MAPPING)
+    KEY_MAPPING = deepcopy(ORIGINAL_KEY_MAPPING)
     return jsonify({"message": "Data reset successfully."}), 200
 
 
 @app.route("/data/types", methods=["GET"])
 def get_types():
-    types = list(MAPPING.keys())
+    types = list(OBJECT_MAPPING.keys())
 
     temp_dir = Path(app.config["UPLOAD_FOLDER"])
 
@@ -315,9 +317,7 @@ def run_simulation():
                     "include_comments": True,
                 },
                 "aiida_version": "2.4.3",
-                "has_parent": {
-                    "id": selected_object_id,
-                },
+                "has_parent": selected_object_id,
             },
             "ontology": "https://aiida.net/Simulation",
         }
@@ -342,24 +342,36 @@ def _contextualize(item):
 def _transform_against_context(data):
     ontology = data["ontology"]
     if context := CONTEXT.get(ontology, {}):
-        object_type = MAPPING[ontology]
+        object_type = OBJECT_MAPPING[ontology]
         if ctx := context.get("@context", {}):
-            expanded = jsonld.expand(
-                {
-                    "@context": data["@context"],
-                    **data["metadata"],
-                },
-            )
-            metadata = jsonld.compact(expanded, ctx)
-            metadata.pop("@context")
+            metadata = _translate(data, ctx)
         else:
             metadata = data["metadata"]
     else:
-        object_type = "@aiida.Object"
-        MAPPING[ontology] = object_type
-        CONTEXT[ontology] = {"@context": data["@context"]}
-        metadata = data["metadata"]
+        object_type = "@openBIS.Object"
+        OBJECT_MAPPING[ontology] = object_type
+        new_context = {}
+        for field, properties in data["@context"].items():
+            if (iri := properties["@id"]) in KEY_MAPPING:
+                field = KEY_MAPPING[iri]
+            else:
+                KEY_MAPPING[iri] = field
+            new_context[field] = properties
+        CONTEXT[ontology] = {"@context": new_context}
+        metadata = _translate(data, new_context)
     return object_type, metadata
+
+
+def _translate(data, ctx):
+    expanded = jsonld.expand(
+        {
+            "@context": data["@context"],
+            **data["metadata"],
+        },
+    )
+    metadata = jsonld.compact(expanded, ctx)
+    metadata.pop("@context")
+    return metadata
 
 
 @app.route("/download")

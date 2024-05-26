@@ -17,27 +17,45 @@ IDS = {
     },
 }
 
-MAPPING = {
+OBJECT_MAPPING = {
     "https://openbis.ont.ethz.ch/DataSet": "@openBIS.Dataset",
     "https://openbis.ont.ethz.ch/Experiment": "@openBIS.Experiment",
     "https://schema.org/Protein": "@openBIS.Sample",
     "https://schema.org/MolecularEntity": "@openBIS.Sample",
 }
 
-SAMPLE_CONTEXT = {
-    "wasImported": {
-        "@id": "https://schema.org/wasImported",
-        "@container": "@index",
-        },
+KEY_MAPPING = {
+    "https://schema.org/hasParent": "hasParent",
+    "http://schema.org/children": "hasChildren",
+    "https://schema.org/wasImported": "wasImported",
+    "https://openbis.ont.ethz.ch/info": "info",
+    "https://schema.org/hasBioPolymerSequence": "hasBioPolymerSequence",
+    "https://schema.org/inChIKey": "inChIKey",
+    "https://schema.org/iupacName": "iupacName",
+    "https://schema.org/molecularFormula": "molecularFormula",
+    "https://schema.org/molecularWeight": "molecularWeight",
+    "https://schema.org/molecularWeightUnits": "molecularWeightUnits",
+}
+
+OBJECT_CONTEXT = {
+    "hasParent": {
+        "@id": "https://schema.org/hasParent",
+        "@type": "xsd:string",
+    },
     "hasChildren": {
         "@id": "http://schema.org/children",
         "@container": "@set",
+    },
+    "wasImported": {
+        "@id": "https://schema.org/wasImported",
+        "@container": "@index",
     },
 }
 
 CONTEXT: dict[str, dict] = {
     "https://openbis.ont.ethz.ch/DataSet": {
         "@context": {
+            **OBJECT_CONTEXT,
             "info": {
                 "@id": "https://openbis.ont.ethz.ch/info",
                 "@type": "xsd:string",
@@ -46,6 +64,7 @@ CONTEXT: dict[str, dict] = {
     },
     "https://openbis.ont.ethz.ch/Experiment": {
         "@context": {
+            **OBJECT_CONTEXT,
             "info": {
                 "@id": "https://openbis.ont.ethz.ch/info",
                 "@type": "xsd:string",
@@ -54,7 +73,7 @@ CONTEXT: dict[str, dict] = {
     },
     "https://schema.org/Protein": {
         "@context": {
-            **SAMPLE_CONTEXT,
+            **OBJECT_CONTEXT,
             "hasBioPolymerSequence": {
                 "@id": "https://schema.org/hasBioPolymerSequence",
                 "@type": "xsd:string",
@@ -63,7 +82,7 @@ CONTEXT: dict[str, dict] = {
     },
     "https://schema.org/MolecularEntity": {
         "@context": {
-            **SAMPLE_CONTEXT,
+            **OBJECT_CONTEXT,
             "inChIKey": {
                 "@id": "https://schema.org/inChIKey",
                 "@type": "xsd:string",
