@@ -20,48 +20,88 @@
         Connect
       </button>
     </div>
-    <div id="portSections" class="d-none">
-      <div id="importSection" class="border">
-        <h2 class="mb-4">Imports</h2>
-        <div class="d-flex align-items-center mb-3">
-      <div class="form-label">
-        <label>Ontology:</label>
-      </div>
-      <select
-        name="platformTypeSelect"
-        id="platformTypeSelect"
-        class="form-select me-2"
-      >
-        <option value="">Select an ontological type</option>
-      </select>
-      <button
-        onclick="fetchPlatformData()"
-        class="btn btn-success form-button"
-        disabled
-      >
-        Fetch
-      </button>
-    </div>
-    <ul id="platformDataList" class="list-group mt-3"></ul>
-      </div>
-      <div id="exportSection" class="border">
-        <h2 class="mb-4">Exports</h2>
-        <div class="d-flex align-items-center mb-3">
-          <div class="form-label">
-            <label>Samples:</label>
-          </div>
-          <select
-            name="exportSelect"
-            id="exportSelect"
-            class="form-select me-2"
-          ></select>
+    <div id="portSections" class="accordion d-none">
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="importSectionHeader">
           <button
-            onclick="exportData()"
-            class="btn btn-success form-button"
-            disabled
+            class="accordion-button"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#importSectionCollapse"
+            aria-expanded="true"
+            aria-controls="importSectionCollapse"
           >
-            Export
+            Imports
           </button>
+        </h2>
+        <div
+          id="importSectionCollapse"
+          class="accordion-collapse collapse show"
+          aria-labelledby="importSectionHeader"
+          data-bs-parent="#accordion"
+        >
+          <div class="accordion-body">
+            <div class="d-flex align-items-center my-2">
+              <div class="form-label">
+                <label>Ontology:</label>
+              </div>
+              <select
+                name="platformTypeSelect"
+                id="platformTypeSelect"
+                class="form-select me-2"
+              >
+                <option value="">Select an ontological type</option>
+              </select>
+              <button
+                onclick="fetchPlatformData()"
+                class="btn btn-success form-button"
+                disabled
+              >
+                Fetch
+              </button>
+            </div>
+            <ul id="platformDataList" class="list-group mt-3"></ul>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="exportSectionHeader">
+          <button
+            class="accordion-button collapsed"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#exportSectionCollapse"
+            aria-expanded="false"
+            aria-controls="exportSectionCollapse"
+          >
+            Exports
+          </button>
+        </h2>
+        <div
+          id="exportSectionCollapse"
+          class="accordion-collapse collapse"
+          aria-labelledby="exportSectionHeader"
+          data-bs-parent="#accordion"
+        >
+          <div class="accordion-body">
+            <div class="d-flex align-items-center my-2">
+              <div class="form-label">
+                <label>Samples:</label>
+              </div>
+              <select
+                name="exportSelect"
+                id="exportSelect"
+                class="form-select me-2"
+              ></select>
+              <button
+                onclick="exportData()"
+                class="btn btn-success form-button"
+                disabled
+              >
+                Export
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

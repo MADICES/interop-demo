@@ -15,10 +15,8 @@
   width: 40px;
 }
 
-#importSection,
-#exportSection {
-  margin: 1em -1em;
-  padding: 1em;
+.accordion-button {
+  font-size: 0.75em;
 }
 
 pre {
