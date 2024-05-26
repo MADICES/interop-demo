@@ -2,10 +2,10 @@ import json
 import os
 import shutil
 import tempfile
-import time
 import uuid
 import zipfile
 from copy import deepcopy
+from io import BytesIO
 from pathlib import Path
 
 import jinja2
@@ -92,19 +92,16 @@ def reset_data():
 
 @app.route("/data/types", methods=["GET"])
 def get_types():
+    types = list(MAPPING.keys())
+
     temp_dir = Path(app.config["UPLOAD_FOLDER"])
 
     crate = ROCrate()
-
-    filename = "response.json"
-    filepath = temp_dir / filename
-
-    with filepath.open("w") as file:
-        json.dump(list(MAPPING.keys()), file, indent=4)
-
+    content = json.dumps(types, indent=4)
+    file = BytesIO(content.encode())
     crate.add_file(
-        filepath,
-        f"./{filename}",
+        file,
+        "./response.json",
         properties={
             "@type": "RESPONSE",
         },
@@ -130,24 +127,20 @@ def get_objects_by_ontological_type():
     if not ontology:
         return "Missing ontological type.", 400
 
+    objects = [
+        _contextualize(item)
+        for item in DATA
+        if item["ontology"].lower() == ontology.lower()
+    ]
+
     temp_dir = Path(app.config["UPLOAD_FOLDER"])
 
     crate = ROCrate()
-
-    filename = "response.json"
-    filepath = temp_dir / filename
-
-    with filepath.open("w") as file:
-        objects = [
-            _contextualize_data(item)
-            for item in DATA
-            if item["ontology"].lower() == ontology.lower()
-        ]
-        json.dump(objects, file, indent=4)
-
+    content = json.dumps(objects, indent=4)
+    file = BytesIO(content.encode())
     crate.add_file(
-        filepath,
-        f"./{filename}",
+        file,
+        "./response.json",
         properties={
             "@type": "RESPONSE",
         },
