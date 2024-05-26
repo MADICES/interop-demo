@@ -24,6 +24,17 @@ MAPPING = {
     "https://schema.org/MolecularEntity": "@openBIS.Sample",
 }
 
+SAMPLE_CONTEXT = {
+    "wasImported": {
+        "@id": "https://schema.org/wasImported",
+        "@container": "@index",
+        },
+    "hasChildren": {
+        "@id": "http://schema.org/children",
+        "@container": "@set",
+    },
+}
+
 CONTEXT: dict[str, dict] = {
     "https://openbis.ont.ethz.ch/DataSet": {
         "@context": {
@@ -43,6 +54,7 @@ CONTEXT: dict[str, dict] = {
     },
     "https://schema.org/Protein": {
         "@context": {
+            **SAMPLE_CONTEXT,
             "hasBioPolymerSequence": {
                 "@id": "https://schema.org/hasBioPolymerSequence",
                 "@type": "xsd:string",
@@ -51,6 +63,7 @@ CONTEXT: dict[str, dict] = {
     },
     "https://schema.org/MolecularEntity": {
         "@context": {
+            **SAMPLE_CONTEXT,
             "inChIKey": {
                 "@id": "https://schema.org/inChIKey",
                 "@type": "xsd:string",

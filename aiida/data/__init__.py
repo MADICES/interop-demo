@@ -24,11 +24,22 @@ MAPPING = {
     "https://schema.org/MolecularEntity": "@aiida.Sample",
 }
 
+SAMPLE_CONTEXT = {
+    "was_imported": {
+        "@id": "https://schema.org/wasImported",
+        "@container": "@index",
+        },
+    "has_children": {
+        "@id": "http://schema.org/children",
+        "@container": "@set",
+    },
+}
+
 CONTEXT: dict[str, dict] = {
     "https://aiida.net/Simulation": {
         "@context": {
-            "id": {
-                "@id": "https://aiida.net/id",
+            "uuid": {
+                "@id": "https://aiida.net/uuid",
                 "@type": "xsd:string",
             },
             "aiida_version": {
@@ -39,6 +50,7 @@ CONTEXT: dict[str, dict] = {
                 "@id": "https://aiida.net/creation_parameters",
                 "@type": "xsd:string",
             },
+            "has_parent": "https://aiida.net/hasParent",
         },
     },
     "https://aiida.net/Workflow": {
@@ -55,6 +67,7 @@ CONTEXT: dict[str, dict] = {
     },
     "https://schema.org/Protein": {
         "@context": {
+            **SAMPLE_CONTEXT,
             "hasBioPolymerSequence": {
                 "@id": "https://schema.org/hasBioPolymerSequence",
                 "@type": "xsd:string",
@@ -63,6 +76,7 @@ CONTEXT: dict[str, dict] = {
     },
     "https://schema.org/MolecularEntity": {
         "@context": {
+            **SAMPLE_CONTEXT,
             "key": {
                 "@id": "https://schema.org/inChIKey",
                 "@type": "xsd:string",
@@ -93,7 +107,7 @@ DATA = [
         "type": "@aiida.Simulation",
         "title": "A simulation of something",
         "metadata": {
-            "id": "5235211",
+            "uuid": "0c4c9c0c-1a76-11ef-b03b-00155d31432b",
             "aiida_version": "2.4.3",
             "creation_parameters": {
                 "entities_starting_set": {
