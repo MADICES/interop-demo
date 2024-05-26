@@ -165,7 +165,8 @@ function updatePlatformDataList(data) {
 }
 
 function importData(item) {
-  fetch("data/import", {
+  const port = document.getElementById("platformSelect").value;
+  fetch(`data/import?port=${port}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

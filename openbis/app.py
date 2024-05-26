@@ -159,11 +159,16 @@ def get_objects_by_ontological_type():
 
 @app.route("/data/import", methods=["POST"])
 def import_data():
+    port = request.args.get("port")
     data = request.json
     if any(item["title"] == data["title"] for item in DATA):
         return jsonify({"message": "The item already exists."}), 409
     try:
         object_type, metadata = _transform_against_context(data)
+        metadata["wasImported"] = {  # type: ignore
+            "from": int(port),
+            "with_id": data["id"],
+        }
         object_id = IDS[object_type]
         object_id["counter"] += 1
         data = {
