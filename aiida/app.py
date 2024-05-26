@@ -326,7 +326,7 @@ def _transform_against_context(data):
         else:
             metadata = data["metadata"]
     else:
-        object_type = "@openBIS.Object"
+        object_type = "@aiida.Object"
         OBJECT_MAPPING[ontology] = object_type
         new_context = {}
         for field, properties in data["@context"].items():
