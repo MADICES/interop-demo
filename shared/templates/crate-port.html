@@ -1,26 +1,6 @@
 <div id="cratePort" class="container">
   <div class="col-12">
     <h1 class="mb-4">Crate Port</h1>
-    <div id="crateSection">
-      <div class="d-flex align-items-center mb-3">
-        <div class="form-label">
-          <label>Crates:</label>
-        </div>
-        <select name="crateSelect" id="crateSelect" class="form-select me-2">
-          <option value="">Select a crate</option>
-        </select>
-        <button
-          onclick="showCrate()"
-          class="btn btn-primary form-button"
-          disabled
-        >
-          View
-        </button>
-      </div>
-      <div id="crateView" class="col-12 d-none border p-3 mb-3">
-        <pre></pre>
-      </div>
-    </div>
     <div id="platformSection" class="d-flex align-items-center mb-3">
       <div class="form-label">
         <label>Platform:</label>
@@ -40,7 +20,7 @@
         Connect
       </button>
     </div>
-    <div id="portSections" class="accordion accordion-flush border d-none">
+    <div id="portSections" class="accordion accordion-flush border d-none mb-3">
       <div class="accordion-item">
         <h2 class="accordion-header" id="importSectionHeader">
           <button
@@ -87,7 +67,7 @@
       <div class="accordion-item">
         <h2 class="accordion-header" id="exportSectionHeader">
           <button
-            class="accordion-button collapsed"
+            class="accordion-button"
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#exportSectionCollapse"
@@ -99,7 +79,7 @@
         </h2>
         <div
           id="exportSectionCollapse"
-          class="accordion-collapse collapse"
+          class="accordion-collapse collapse show"
           aria-labelledby="exportSectionHeader"
           data-bs-parent="#accordion"
         >
@@ -123,6 +103,27 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+    <hr />
+    <div id="crateSection">
+      <div class="d-flex align-items-center mb-3">
+        <div class="form-label">
+          <label>Crates:</label>
+        </div>
+        <select name="crateSelect" id="crateSelect" class="form-select me-2">
+          <option value="">Select a crate</option>
+        </select>
+        <button
+          onclick="showCrate()"
+          class="btn btn-primary form-button"
+          disabled
+        >
+          View
+        </button>
+      </div>
+      <div id="crateView" class="col-12 d-none border p-3 mb-3">
+        <pre></pre>
       </div>
     </div>
   </div>

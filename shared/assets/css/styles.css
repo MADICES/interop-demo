@@ -18,6 +18,12 @@
 .accordion-button {
   font-size: 0.75em;
   font-weight: bold;
+  background-color: #f2f2f2;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: #f2f2f2;
+  color: var(--bs-heading-color);
 }
 
 pre {
