@@ -112,14 +112,15 @@ def get_types():
     crate = ROCrate()
     content = json.dumps(types, indent=4)
     file = BytesIO(content.encode())
+    filename = "ontologies"
     crate.add_file(
         file,
-        "./response.json",
+        f"./{filename}.json",
         properties={
             "@type": "RESPONSE",
         },
     )
-    crate_dir = temp_dir / "ontologies"
+    crate_dir = temp_dir / filename
     crate.write_zip(crate_dir)
     zipped_crate_path = crate_dir.with_suffix(".zip")
     return send_file(
@@ -142,14 +143,15 @@ def get_objects_by_ontological_type():
     crate = ROCrate()
     content = json.dumps(objects, indent=4)
     file = BytesIO(content.encode())
+    filename = "objects"
     crate.add_file(
         file,
-        "./response.json",
+        f"./{filename}.json",
         properties={
             "@type": "RESPONSE",
         },
     )
-    crate_dir = temp_dir / "objects_by_ontology"
+    crate_dir = temp_dir / filename
     crate.write_zip(crate_dir)
     zipped_crate_path = crate_dir.with_suffix(".zip")
     return send_file(
@@ -199,9 +201,10 @@ def export_data():
     crate = ROCrate()
     content = json.dumps(sample, indent=4)
     file = BytesIO(content.encode())
+    filename = f"{object_id.lower()}.json"
     crate.add_file(
         file,
-        "./export.json",
+        f"./{filename}",
         properties={
             "@type": "EXPORT",
         },
@@ -235,8 +238,12 @@ def receive_zip():
         try:
             byte_stream = BytesIO(file.read())
             zip_file = zipfile.ZipFile(byte_stream, "r")
-            with zip_file.open("export.json") as f:
-                data: dict = json.load(f)
+            if "ro-crate-metadata.json" not in zip_file.namelist():
+                return jsonify({"message": "Missing crate manifest"}), 400
+            if not (filename := _get_export_filename_from_crate(zip_file)):
+                return jsonify({"message": "Missing export file"}), 400
+            with zip_file.open(filename) as export_file:
+                data: dict = json.load(export_file)
             object_type, metadata = _transform_against_context(data)
             if metadata.get("wasImported", {}).get("from") == PORT:
                 local_id = metadata["wasImported"]["with_id"]  # type: ignore
@@ -310,6 +317,19 @@ def _translate(data, ctx):
     metadata = jsonld.compact(expanded, ctx)
     metadata.pop("@context")
     return metadata
+
+
+def _get_export_filename_from_crate(zip_file: zipfile.ZipFile):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        zip_file.extractall(temp_dir)
+        return next(
+            (
+                entity.id
+                for entity in ROCrate(temp_dir).data_entities
+                if entity.type == "EXPORT"
+            ),
+            None,
+        )
 
 
 @app.route("/download")

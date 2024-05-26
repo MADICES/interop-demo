@@ -129,13 +129,7 @@ function fetchPlatformTypes() {
       const jsZip = new JSZip();
       return jsZip.loadAsync(blob);
     })
-    .then((zip) => {
-      const filename = "response.json";
-      if (filename in zip.files) {
-        return zip.files[filename].async("string");
-      }
-      throw new Error("File not found in zip");
-    })
+    .then((zip) => processROCrates(zip))
     .then((jsonString) => {
       const data = JSON.parse(jsonString);
       updateTypeSelection(data);
@@ -173,13 +167,7 @@ function fetchPlatformData() {
         const jsZip = new JSZip();
         return jsZip.loadAsync(blob);
       })
-      .then((zip) => {
-        const filename = "response.json";
-        if (filename in zip.files) {
-          return zip.files[filename].async("string");
-        }
-        throw new Error("File not found in zip");
-      })
+      .then((zip) => processROCrates(zip))
       .then((jsonString) => {
         const data = JSON.parse(jsonString);
         updatePlatformDataList(data);
@@ -192,6 +180,35 @@ function fetchPlatformData() {
   } else {
     alert("Please select a type to filter by!");
   }
+}
+
+function processROCrates(zip) {
+  // TODO use the JS ROCrate library instead
+  return new Promise((resolve, reject) => {
+    let filename;
+    if ("ro-crate-metadata.json" in zip.files) {
+      zip.files["ro-crate-metadata.json"]
+        .async("string")
+        .then((json) => {
+          const data = JSON.parse(json);
+          data["@graph"].forEach((item) => {
+            if (item["@type"] === "RESPONSE") {
+              filename = item["@id"];
+            }
+          });
+          if (filename && filename in zip.files) {
+            resolve(zip.files[filename].async("string"));
+          } else {
+            reject(new Error("Missing types file"));
+          }
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    } else {
+      reject(new Error("Missing manifest"));
+    }
+  });
 }
 
 function populateExportSamples(data) {
@@ -222,7 +239,6 @@ function updatePlatformDataList(data) {
     span.innerHTML = `
             <strong>ID:</strong> ${item.id}
             <strong>title:</strong> ${item.title}
-            <strong>Ontology:</strong> ${item.ontology}
           `;
     li.appendChild(span);
     const button = document.createElement("button");
@@ -294,6 +310,7 @@ function resetData() {
       fetchData();
       fetchCrates();
       hideMetadata();
+      hideCrateView();
       hideError();
     },
     () => handleError("Failed to reset data.")
