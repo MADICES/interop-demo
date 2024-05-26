@@ -161,47 +161,21 @@ def get_objects_by_ontological_type():
 
 @app.route("/data/import", methods=["POST"])
 def import_data():
+    data = request.json
+    if any(item["title"] == data["title"] for item in DATA):
+        return jsonify({"message": "The item already exists."}), 409
     try:
-        new_data = request.json
-
-        if any(item["title"] == new_data["title"] for item in DATA):
-            return jsonify({"message": "The item already exists."}), 409
-
-        ontology = new_data["ontology"]
-        context = CONTEXT.get(ontology, {})
-
-        if context:
-            object_type = MAPPING[ontology]
-            if ctx := context.get("@context", {}):
-                expanded = jsonld.expand(
-                    {
-                        "@context": new_data["@context"],
-                        **new_data["metadata"],
-                    },
-                )
-                metadata = jsonld.compact(expanded, ctx)
-                metadata.pop("@context")
-            else:
-                metadata = new_data["metadata"]
-        else:
-            object_type = "@aiida.Object"
-            MAPPING[ontology] = object_type
-            CONTEXT[ontology] = {"@context": new_data["@context"]}
-            metadata = new_data["metadata"]
-
+        object_type, metadata = _transform_against_context(data)
         object_id = IDS[object_type]
         object_id["counter"] += 1
-
-        new_data = {
+        data = {
             "id": f"{object_id['prefix']}-{object_id['counter']}",
             "type": object_type,
-            "title": new_data["title"],
+            "title": data["title"],
             "metadata": metadata,
-            "ontology": ontology,
+            "ontology": data["ontology"],
         }
-
-        DATA.append(new_data)
-
+        DATA.append(data)
         return jsonify({"message": "Data imported successfully."}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
@@ -257,6 +231,29 @@ def run_simulation():
 
 def _contextualize(item):
     return {**CONTEXT.get(item["ontology"], {}), **item}
+
+
+def _transform_against_context(data):
+    ontology = data["ontology"]
+    if context := CONTEXT.get(ontology, {}):
+        object_type = MAPPING[ontology]
+        if ctx := context.get("@context", {}):
+            expanded = jsonld.expand(
+                {
+                    "@context": data["@context"],
+                    **data["metadata"],
+                },
+            )
+            metadata = jsonld.compact(expanded, ctx)
+            metadata.pop("@context")
+        else:
+            metadata = data["metadata"]
+    else:
+        object_type = "@aiida.Object"
+        MAPPING[ontology] = object_type
+        CONTEXT[ontology] = {"@context": data["@context"]}
+        metadata = data["metadata"]
+    return object_type, metadata
 
 
 @app.route("/download")
