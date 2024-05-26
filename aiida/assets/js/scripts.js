@@ -25,7 +25,7 @@ function populateSelectSimulation(data) {
   });
 }
 
-function startSimulation() {
+function runSimulation() {
   const selectedObjectId = document.getElementById("sampleSelect").value;
 
   if (!selectedObjectId) {

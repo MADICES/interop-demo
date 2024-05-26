@@ -207,8 +207,77 @@ def import_data():
         return jsonify({"message": str(e)}), 500
 
 
+@app.route("/data/run_simulation", methods=["GET"])
+def run_simulation():
+    try:
+        selected_object_id = request.args.get("id")
+        selected_object = next(
+            (item for item in DATA if item["id"] == selected_object_id),
+            None,
+        )
+
+        if selected_object is None:
+            return jsonify({"message": "Selected object not found"}), 404
+
+        object_type = "@aiida.Simulation"
+        object_id = IDS[object_type]
+        object_id["counter"] += 1
+
+        new_simulation = {
+            "id": f"{object_id['prefix']}-{object_id['counter']}",
+            "type": object_type,
+            "title": f"New Simulation on {selected_object_id}",
+            "metadata": {
+                "uuid": str(uuid.uuid1()),
+                "creation_parameters": {
+                    "entities_starting_set": {"node": str(uuid.uuid1())},
+                    "include_authinfos": False,
+                    "include_comments": True,
+                },
+                "aiida_version": "2.4.3",
+                "has_parent": {
+                    "id": selected_object_id,
+                },
+            },
+            "ontology": "https://aiida.net/Simulation",
+        }
+
+        if "has_children" not in selected_object["metadata"]:
+            selected_object["metadata"]["has_children"] = []
+
+        simulations: list = selected_object["metadata"]["has_children"]
+        simulations.append(new_simulation["id"])
+
+        DATA.append(new_simulation)
+
+        return jsonify(selected_object["id"]), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
 def _contextualize(item):
     return {**CONTEXT.get(item["ontology"], {}), **item}
+
+
+@app.route("/download")
+def download():
+    # Send the file to the user
+    response = send_file("ro_crate.zip", as_attachment=True)
+
+    # Clean up ro_crate_output directory after download
+    def after_request(response):
+        uploads_dir = app.config["UPLOAD_FOLDER"]
+        try:
+            shutil.rmtree("ro_crate.zip")
+            # Clean up uploads directory after creating the RO-Crate
+            shutil.rmtree(uploads_dir)
+            os.makedirs(uploads_dir)  # Recreate the directory for future uploads
+        except Exception as e:
+            app.logger.error("Error cleaning up ro_crate_output directory", exc_info=e)
+        return response
+
+    response.call_on_close(lambda: after_request(response))
+    return response
 
 
 @app.route("/upload_rocrate", methods=["POST"])
@@ -326,72 +395,6 @@ def export_data():
     return jsonify(
         {"message": "RO-Crate prepared for download.", "file_paths": file_paths}
     )
-
-
-@app.route("/download")
-def download():
-    # Send the file to the user
-    response = send_file("ro_crate.zip", as_attachment=True)
-
-    # Clean up ro_crate_output directory after download
-    def after_request(response):
-        uploads_dir = app.config["UPLOAD_FOLDER"]
-        try:
-            shutil.rmtree("ro_crate.zip")
-            # Clean up uploads directory after creating the RO-Crate
-            shutil.rmtree(uploads_dir)
-            os.makedirs(uploads_dir)  # Recreate the directory for future uploads
-        except Exception as e:
-            app.logger.error("Error cleaning up ro_crate_output directory", exc_info=e)
-        return response
-
-    response.call_on_close(lambda: after_request(response))
-    return response
-
-
-@app.route("/data/run_simulation", methods=["GET"])
-def run_simulation():
-    try:
-        selected_object_id = request.args.get("id")
-        selected_object = next(
-            (item for item in DATA if item["id"] == selected_object_id),
-            None,
-        )
-
-        if selected_object is None:
-            return jsonify({"message": "Selected object not found"}), 404
-
-        object_type = "@aiida.Simulation"
-        object_id = IDS[object_type]
-        object_id["counter"] += 1
-
-        new_simulation = {
-            "id": f"{object_id['prefix']}-{object_id['counter']}",
-            "type": object_type,
-            "title": f"New Simulation on {selected_object_id}",
-            "metadata": {
-                "creation_parameters": {
-                    "entities_starting_set": {"node": str(uuid.uuid1())},
-                    "include_authinfos": False,
-                    "include_comments": True,
-                },
-                "aiida_version": "2.4.3",
-                "has_parent": selected_object_id,
-            },
-            "ontology": "https://aiida.net/Simulation",
-        }
-
-        if "has_child" not in selected_object["metadata"]:
-            selected_object["metadata"]["has_child"] = []
-
-        simulations: list = selected_object["metadata"]["has_child"]
-        simulations.append(new_simulation["id"])
-
-        DATA.append(new_simulation)
-
-        return jsonify(selected_object["id"]), 201
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
 
 
 @app.route("/api/export", methods=["POST"])

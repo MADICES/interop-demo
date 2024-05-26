@@ -209,6 +209,27 @@ def _contextualize(item):
     return {**CONTEXT.get(item["ontology"], {}), **item}
 
 
+@app.route("/download")
+def download():
+    # Send the file to the user
+    response = send_file("ro_crate.zip", as_attachment=True)
+
+    # Clean up ro_crate_output directory after download
+    def after_request(response):
+        uploads_dir = app.config["UPLOAD_FOLDER"]
+        try:
+            shutil.rmtree("ro_crate.zip")
+            # Clean up uploads directory after creating the RO-Crate
+            shutil.rmtree(uploads_dir)
+            os.makedirs(uploads_dir)  # Recreate the directory for future uploads
+        except Exception as e:
+            app.logger.error("Error cleaning up ro_crate_output directory", exc_info=e)
+        return response
+
+    response.call_on_close(lambda: after_request(response))
+    return response
+
+
 @app.route("/upload_rocrate", methods=["POST"])
 def upload_rocrate():
     if "file" not in request.files:
@@ -324,27 +345,6 @@ def export_data():
     return jsonify(
         {"message": "RO-Crate prepared for download.", "file_paths": file_paths}
     )
-
-
-@app.route("/download")
-def download():
-    # Send the file to the user
-    response = send_file("ro_crate.zip", as_attachment=True)
-
-    # Clean up ro_crate_output directory after download
-    def after_request(response):
-        uploads_dir = app.config["UPLOAD_FOLDER"]
-        try:
-            shutil.rmtree("ro_crate.zip")
-            # Clean up uploads directory after creating the RO-Crate
-            shutil.rmtree(uploads_dir)
-            os.makedirs(uploads_dir)  # Recreate the directory for future uploads
-        except Exception as e:
-            app.logger.error("Error cleaning up ro_crate_output directory", exc_info=e)
-        return response
-
-    response.call_on_close(lambda: after_request(response))
-    return response
 
 
 @app.route("/receive", methods=["POST"])
