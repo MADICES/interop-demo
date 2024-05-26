@@ -37,6 +37,7 @@ app.jinja_loader = jinja2.ChoiceLoader(
     ]
 )
 
+PORT = 5002
 
 ORIGINAL_DATA = deepcopy(DATA)
 ORIGINAL_IDS = deepcopy(IDS)
@@ -461,4 +462,4 @@ def send_data():
 
 
 if __name__ == "__main__":
-    app.run(port=5002, debug=True)
+    app.run(port=PORT, debug=True)

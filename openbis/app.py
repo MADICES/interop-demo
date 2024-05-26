@@ -35,6 +35,7 @@ app.jinja_loader = jinja2.ChoiceLoader(
     ]
 )
 
+PORT = 5001
 
 ORIGINAL_DATA = deepcopy(DATA)
 ORIGINAL_IDS = deepcopy(IDS)
@@ -410,4 +411,4 @@ def receive_zip():
 
 
 if __name__ == "__main__":
-    app.run(port=5001, debug=True)
+    app.run(port=PORT, debug=True)
