@@ -62,7 +62,7 @@ def get_platforms():
 
 @app.route("/data", methods=["GET"])
 def get_data():
-    return jsonify([_contextualize_data(item) for item in DATA])
+    return jsonify([_contextualize(item) for item in DATA])
 
 
 @app.route("/data/filter", methods=["GET"])
@@ -74,18 +74,11 @@ def filter_data():
 
     return jsonify(
         [
-            _contextualize_data(item)
+            _contextualize(item)
             for item in DATA
             if item["type"].lower() == filter_type.lower()
         ]
     )
-
-
-def _contextualize_data(item):
-    return {
-        **CONTEXT.get(item["ontology"], {}),
-        **item,
-    }
 
 
 @app.route("/data/reset", methods=["GET"])
@@ -219,6 +212,10 @@ def import_data():
         return jsonify({"message": "Data imported successfully."}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
+
+
+def _contextualize(item):
+    return {**CONTEXT.get(item["ontology"], {}), **item}
 
 
 @app.route("/upload_rocrate", methods=["POST"])
