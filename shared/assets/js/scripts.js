@@ -315,16 +315,19 @@ function updateTable(data) {
     button.innerHTML = "+";
     button.className = "btn btn-outline-secondary metadata-toggler";
     button.addEventListener("click", () => {
+      const infoSection = document.getElementById("infoSection");
       metadata.textContent = "";
       if (button.innerHTML == "+") {
         resetOtherMetadataButtons();
         button.innerHTML = "-";
         metadata.textContent = JSON.stringify(item["metadata"], null, 2);
         context.textContent = JSON.stringify(item["@context"] || {}, null, 2);
+        infoSection.classList.remove("d-none");
       } else {
         button.innerHTML = "+";
         metadata.textContent = "";
         context.textContent = "";
+        infoSection.classList.add("d-none");
       }
     });
     return button;
@@ -354,14 +357,8 @@ function updateTable(data) {
 }
 
 function hideMetadata() {
-  const metadata = document
-    .getElementById("metadata")
-    .getElementsByTagName("pre")[0];
-  const context = document
-    .getElementById("context")
-    .getElementsByTagName("pre")[0];
-  metadata.textContent = "";
-  context.textContent = "";
+  const infoSection = document.getElementById("infoSection");
+  infoSection.classList.add("d-none");
 }
 
 function uploadROCrate() {
