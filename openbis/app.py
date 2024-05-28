@@ -11,8 +11,8 @@ import tempfile
 
 app = Flask(__name__)
 CORS(app)
-app.config['UPLOAD_FOLDER'] = 'temp_uploads/'  # Define where uploaded files will be stored
-app.config['RO_CRATE_FOLDER'] = 'ro_crate/'
+app.config['UPLOAD_FOLDER'] = './temp_uploads/'  # Define where uploaded files will be stored
+app.config['RO_CRATE_FOLDER'] = './ro_crate/'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit to 16MB
 
 OPENBIS_DATA = [
@@ -44,7 +44,6 @@ def filter_data():
     if filter_type == "all":
         return jsonify(OPENBIS_DATA)
     filtered_data = [item for item in OPENBIS_DATA if item['ontology'].lower() == filter_type.lower()]
-
     return jsonify(filtered_data)
 
 def extract_and_read_rocrate(file_path):
@@ -73,7 +72,6 @@ def get_all_types():
     response_file_path = os.path.join(temp_dir, 'response.json')
     with open(response_file_path, 'w') as f:
         json.dump([item['ontology'] for item in OPENBIS_DATA], f, indent=4)
-
     
     # Add the JSON file to the crate
     crate.add_file(response_file_path, './response.json', properties={"@type": "RESPONSE"})
@@ -210,17 +208,25 @@ def receive_zip():
             # Now use the BytesIO object with zipfile
             zip_file = zipfile.ZipFile(byte_stream, 'r')
             print(zip_file.namelist())  # List contents of the zip to confirm successful opening
-
-            with zip_file.open('ro-crate-metadata.json') as f:
-                data = f.read()
-                print(json.loads(data))
             
-            # Assuming there's a specific file you want to read from the zip
-            with zip_file.open('query.json') as f:
-                print(type(f))
-                data = f.read()
-                print(json.loads(data))  # Output the contents of the data.json file
-                OPENBIS_DATA.append(json.loads(data))
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Unzip the file
+                with zipfile.ZipFile(byte_stream, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+
+                # Process the unzipped directory
+                crate = ROCrate(temp_dir)
+                for entity in crate.get_entities():
+                    print("ENTITY = ", entity)
+                    if entity['@type'] == 'PUT':
+                        put_file = os.path.join(temp_dir, entity['@id'])
+                        with open(put_file, 'r') as file:
+                            objToUpdate = json.load(file)
+                            print("objToUpdate = ", objToUpdate)
+                            selected_object_id = objToUpdate['id']
+                            print("selected_object_id = ", selected_object_id)
+                            selected_object_index = next((index for index, item in enumerate(OPENBIS_DATA) if item['id'] == selected_object_id), None)                            
+                            OPENBIS_DATA[selected_object_index] = objToUpdate
 
             return jsonify({"message": "Zip file processed successfully"}), 200
         except zipfile.BadZipFile:

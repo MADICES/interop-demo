@@ -245,7 +245,6 @@ def start_simulation():
 
 @app.route('/api/export', methods=['POST'])
 def send_data():
-
     objectToExport = request.json
     temp_dir = app.config['RO_CRATE_FOLDER']
     if not os.path.exists(temp_dir):
@@ -267,30 +266,12 @@ def send_data():
 
     #shutil.rmtree(temp_dir)
 
-    
-    #url = 'http://localhost:5001/receive'
-    #response = requests.post(url, json=crate)
-    
-    # Create a zip file in memory
-    """ memory_file = io.BytesIO()
-    with zipfile.ZipFile(memory_file, 'w') as zf:
-        for e in crate.get_entities():
-            print(e)
-            if(e.type != "Dataset"):
-                # Adding a file named 'data.json' with content 'data'
-                zf.write(e.id)
-
-    # Important: move the cursor back to the beginning of the BytesIO buffer
-    memory_file.seek(0) """
-    
-    url = 'http://localhost:5001/receive_zip'
-
     files = {'file': ('filename.zip', open(crate_path, 'rb'), 'application/zip')}
     #files = {'file': ('ro_crate.zip', memory_file, 'application/zip')}
-    
+
+    url = 'http://localhost:5001/receive_zip'
     response = requests.post(url, files=files)
 
-    print(response)
     if response.status_code == 200:
         return jsonify({"message": "Data sent to openBIS successfully", "responseFromopenBIS": response.json()}), 200
     else:
