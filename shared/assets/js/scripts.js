@@ -243,7 +243,7 @@ function updatePlatformDataList(data) {
     li.appendChild(span);
     const button = document.createElement("button");
     button.className = "btn btn-outline-secondary btn-sm";
-    button.textContent = "Import Data";
+    button.textContent = "Import";
     button.onclick = () => {
       importData(item);
     };
