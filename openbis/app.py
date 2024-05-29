@@ -24,7 +24,7 @@ app = Flask(
 
 CORS(app)
 
-app.config["RO_CRATE_FOLDER"] = "temp_uploads/"
+app.config["UPLOAD_FOLDER"] = "temp_uploads/"
 app.config["RO_CRATE_FOLDER"] = "ro_crates/"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 app.config["SHARED_PATH"] = "../shared"
@@ -100,8 +100,9 @@ def reset_data():
     IDS = deepcopy(ORIGINAL_IDS)
     OBJECT_MAPPING = deepcopy(ORIGINAL_OBJECT_MAPPING)
     KEY_MAPPING = deepcopy(ORIGINAL_KEY_MAPPING)
-    shutil.rmtree(app.config["RO_CRATE_FOLDER"])
-    Path(app.config["RO_CRATE_FOLDER"]).mkdir()
+    for folder in ["RO_CRATE_FOLDER", "UPLOAD_FOLDER"]:
+        shutil.rmtree(app.config[folder])
+        Path(app.config[folder]).mkdir()
     return jsonify({"message": "Data reset successfully."}), 200
 
 
@@ -121,7 +122,9 @@ def get_types():
         },
     )
     crate_dir = temp_dir / filename
+    temp_dir = Path(app.config["UPLOAD_FOLDER"])
     crate.write_zip(crate_dir)
+    crate.write(temp_dir)
     zipped_crate_path = crate_dir.with_suffix(".zip")
     return send_file(
         zipped_crate_path,
@@ -152,7 +155,9 @@ def get_objects_by_ontological_type():
         },
     )
     crate_dir = temp_dir / filename
+    temp_dir = Path(app.config["UPLOAD_FOLDER"])
     crate.write_zip(crate_dir)
+    crate.write(temp_dir)
     zipped_crate_path = crate_dir.with_suffix(".zip")
     return send_file(
         zipped_crate_path,
@@ -210,7 +215,9 @@ def export_data():
         },
     )
     crate_dir = temp_dir / "export"
+    temp_dir = Path(app.config["UPLOAD_FOLDER"])
     crate.write_zip(crate_dir)
+    crate.write(temp_dir)
     with crate_dir.with_suffix(".zip").open("rb") as file:
         filename = crate_dir.with_suffix(".zip").name
         response = requests.post(
