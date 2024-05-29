@@ -288,6 +288,13 @@ def receive_zip():
         return jsonify({"message": "Unsupported file type"}), 400
 
 
+@app.route("/files/<path:filename>", methods=["GET"])
+def get_file(filename):
+    path = Path(app.config["UPLOAD_FOLDER"]) / f"{filename}.json"
+    with open(path, "r") as file:
+        return jsonify(json.load(file))
+
+
 @app.route("/data/run_simulation", methods=["GET"])
 def run_simulation():
     try:
