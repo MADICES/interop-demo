@@ -1,0 +1,47 @@
+<div id="dataViewer" class="container">
+  <div id="error" class="alert alert-danger mt-3" style="display: none"></div>
+  <div class="col-12">
+    <h1 class="mb-4">Data Viewer</h1>
+    <div class="mb-3 d-flex align-items-center">
+      <label class="form-label">Filter by:</label>
+      <select
+        id="typeSelect"
+        class="form-select me-2"
+        onchange="refreshData()"
+      ></select>
+      <button onclick="resetData()" class="btn btn-danger form-button">
+        Reset
+      </button>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-striped mt-3" id="dataTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Title</th>
+            <th>Ontology</th>
+            <th class="text-center">Metadata</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Data rows will be appended here -->
+        </tbody>
+      </table>
+    </div>
+    <div id="infoSection" class="row d-none">
+      <div id="metadata" class="col-6 d-flex flex-column">
+        <h2 class="text-center">Metadata</h2>
+        <div class="flex-fill border p-3">
+          <pre></pre>
+        </div>
+      </div>
+      <div id="context" class="col-6 d-flex flex-column">
+        <h2 class="text-center">Context</h2>
+        <div class="flex-fill border p-3">
+          <pre></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

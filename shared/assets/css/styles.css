@@ -1,0 +1,32 @@
+.hidden {
+  display: none;
+}
+
+.form-label {
+  width: 140px;
+  font-size: larger;
+}
+
+.form-button {
+  width: 100px;
+}
+
+.metadata-toggler {
+  width: 40px;
+}
+
+.accordion-button {
+  font-size: 0.75em;
+  font-weight: bold;
+  background-color: #f2f2f2;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: #f2f2f2;
+  color: var(--bs-heading-color);
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
