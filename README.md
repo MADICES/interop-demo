@@ -1,6 +1,6 @@
 # Platform-agnostic interoperability demo
 
-A demonstration of the platform-agnostic interoperability principles and specifications in action
+A demonstration of the [platform-agnostic interoperability principles and specifications](https://github.com/MADICES/interop-specs) in action.
 
 # Flask RO-Crate Application
 
